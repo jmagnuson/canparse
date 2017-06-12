@@ -1,0 +1,11 @@
+target/
+**/*.rs.bk
+Cargo.lock
+.idea/
+bak/
+.vscode/
+
+*.bak
+*~
+*.swp
+*.iml
