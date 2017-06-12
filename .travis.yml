@@ -1,0 +1,10 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+
+script:
+  - cargo build --verbose --features "use-socketcan"
+  - cargo test --verbose --features "use-socketcan"
+
