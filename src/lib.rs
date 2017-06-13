@@ -2,7 +2,7 @@
 #![allow(unused_variables, dead_code)]
 #![allow(unused_imports, unused_mut)]
 #![allow(plugin_as_library)]
-#![feature(test)]
+//#![feature(test)]
 
 #![crate_name = "canparse"]
 
@@ -13,7 +13,7 @@ extern crate regex;
 extern crate rustc_serialize;
 extern crate byteorder;
 
-extern crate test;
+//extern crate test;
 
 #[cfg(feature = "use-socketcan")]
 extern crate socketcan;

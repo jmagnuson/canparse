@@ -301,9 +301,9 @@ mod tests {
     macro_rules! test_entry {
         ($test_name: ident, $entry_type: ident, $test_line: expr, $expected: expr) => (
             mod $test_name {
-                extern crate test;
+                //extern crate test;
 
-                use test::Bencher;
+                //use test::Bencher;
                 use dbc::*;
                 use std::str::FromStr;
 
@@ -315,12 +315,12 @@ mod tests {
                     );
                 }
 
-                #[bench]
+                /*#[bench]
                 fn bench(b: &mut Bencher) {
                     b.iter(|| test::black_box( Entry::from_str(
                         $test_line
                     ) ))
-                }
+                }*/
             }
         )
     }

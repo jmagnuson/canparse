@@ -455,14 +455,14 @@ impl From<SignalAttribute> for SpnDefinition {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
+    //extern crate test;
 
     #[cfg(feature = "use-socketcan")]
     extern crate socketcan;
 
     use pgn::*;
     use dbc::*;
-    use test::Bencher;
+    //use test::Bencher;
 
     #[cfg(feature = "use-socketcan")]
     use socketcan::CANFrame;
@@ -536,13 +536,13 @@ mod tests {
         2728.5
         );
     }
-    #[bench]
+    /*#[bench]
     fn bench_parse_array(b: &mut Bencher) {
 
         b.iter(|| test::black_box(
             SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap()
         ))
-    }
+    }*/
 
     #[test]
     fn test_parse_message() {
@@ -551,13 +551,13 @@ mod tests {
             2728.5
         );
     }
-    #[bench]
+    /*#[bench]
     fn bench_parse_message(b: &mut Bencher) {
 
         b.iter(|| test::black_box(
             SPNDEF.parse_message(&MSG[..]).unwrap()
         ))
-    }
+    }*/
 
     #[test]
     fn parse_message_closure() {
@@ -566,14 +566,14 @@ mod tests {
             2728.5
         );
     }
-    #[bench]
+    /*#[bench]
     fn bench_parse_message_closure(b: &mut Bencher) {
         let parse = SPNDEF.parser();
 
         b.iter(|| test::black_box(
             parse(&MSG[..]).unwrap()
         ))
-    }
+    }*/
 
     #[cfg(feature = "use-socketcan")]
     #[test]
@@ -590,7 +590,7 @@ mod tests {
             2728.5
         );
     }
-    #[cfg(feature = "use-socketcan")]
+    /*#[cfg(feature = "use-socketcan")]
     #[bench]
     fn bench_parse_canframe(b: &mut Bencher) {
         let frame = CANFrame::new(
@@ -603,7 +603,7 @@ mod tests {
         b.iter(|| test::black_box(
             SPNDEF.parse_message(&frame).unwrap()
         ))
-    }
+    }*/
     #[cfg(feature = "use-socketcan")]
     #[test]
     fn parse_canframe_closure() {
@@ -612,7 +612,7 @@ mod tests {
             2728.5
         );
     }
-    #[cfg(feature = "use-socketcan")]
+    /*#[cfg(feature = "use-socketcan")]
     #[bench]
     fn bench_parse_canframe_closure(b: &mut Bencher) {
         let parse = SPNDEF.parser();
@@ -620,7 +620,7 @@ mod tests {
         b.iter(|| test::black_box(
             parse(&FRAME as &CANFrame).unwrap()
         ))
-    }
+    }*/
 
 }
 
