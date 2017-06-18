@@ -13,7 +13,12 @@ use socketcan::CANFrame;
 
 /// Trait for converting `Entry` values into a library's own entries.
 pub trait FromDbc {
+
+    /// Converts an `Entity` value from scratch.
     fn from_entry(entry: Entry) -> Result<Self, String> where Self: Sized;
+
+    /// Merges the given `Entity` with a `mut` version of the library's entity.  Useful for when
+    /// multiple `Entry` types contribute to various attributes within the same destination.
     fn merge_entry(&mut self, entry: Entry) -> Result<(), String>;
 }
 
@@ -98,6 +103,7 @@ impl Default for PgnLibrary {
     }
 }
 
+/// Parameter Group Number definition
 #[derive(Debug, PartialEq, Clone)]
 pub struct PgnDefinition {
     pgn: u32,
@@ -220,6 +226,7 @@ impl FromDbc for PgnDefinition {
     }
 }*/
 
+/// Suspect Parameter Number definition
 #[derive(Debug, PartialEq, Clone)]
 pub struct SpnDefinition {
     name: String,
