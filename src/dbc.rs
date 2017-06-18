@@ -341,8 +341,8 @@ mod tests {
     );
 
     test_entry!( message_description, MessageDescription,
-        "CM_ BO_ 2364539904 \"Electronic Engine Controller 1\";",
-        MessageDescription { id: "2364539904".to_string(), signal_name: "".to_string(), description: "Electronic Engine Controller 1".to_string()}
+        "CM_ BO_ 2364539904 \"Engine Controller\";",
+        MessageDescription { id: "2364539904".to_string(), signal_name: "".to_string(), description: "Engine Controller".to_string()}
     );
 
     test_entry!( message_attribute, MessageAttribute,
