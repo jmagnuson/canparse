@@ -39,6 +39,7 @@ pub use pgn::{
     PgnLibrary,
     SpnDefinition,
     PgnDefinition,
-    FromDbc
+    FromDbc,
+    ParseMessage
 };
 

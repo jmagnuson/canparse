@@ -25,8 +25,10 @@ implemented as folows:
 ```rust
 extern crate canparse;
 
-use canparse::{PgnLibrary, Entry};
+use canparse::{PgnLibrary, SpnDefinition, Entry, ParseMessage};
 use std::str::FromStr;
+use std::collections::HashMap;
+use std::io::BufRead;
 
 fn main() {
     let mut lib = PgnLibrary::new( HashMap::default() );
@@ -42,8 +44,8 @@ fn main() {
     }
 
     // Pull signal definition for engine speed
-    let enginespeed_def: &SpnDefinition = lib.get_pgn(0xF004).unwrap()
-        .spns.get(&"Engine_Speed".to_string()).unwrap();
+    let enginespeed_def: &SpnDefinition = lib
+        .get_spn(&"Engine_Speed".to_string()).unwrap();
 
     // Parse frame containing engine speed
     let msg: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];

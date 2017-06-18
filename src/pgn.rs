@@ -290,7 +290,7 @@ fn parse_message(bit_len: usize, start_bit: usize, little_endian: bool, scale: f
 }
 
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
-trait ParseMessage<N> {
+pub trait ParseMessage<N> {
 
     /// Parses CAN message type `N` into generic `f32` signal value on success, or `None`
     /// on failure.
