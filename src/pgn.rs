@@ -42,15 +42,21 @@ impl PgnLibrary {
     ///
     /// # Example
     ///
-    /// ```rust,ignore
+    /// ```rust
+    /// use std::collections::HashMap;
+    /// use std::io::BufRead;
+    /// use std::str::FromStr;
+    /// use canparse::{PgnLibrary, Entry};
+    ///
     /// let mut lib = PgnLibrary::new( HashMap::default() );
     ///
-    /// let br = include_bytes!("./j1939.dbc");
+    /// let br = include_bytes!("./tests/data/sample.dbc");
     ///
     /// for l in br.lines() {
     ///     let line = l.unwrap();
     ///     if let Some(entry) = Entry::from_str(line.as_str()).ok() {
-    ///         lib.add_entry(entry).unwrap();
+    ///         lib.add_entry(entry).ok();
+    ///
     ///     }
     /// }
     /// ```
@@ -543,13 +549,6 @@ mod tests {
         2728.5
         );
     }
-    /*#[bench]
-    fn bench_parse_array(b: &mut Bencher) {
-
-        b.iter(|| test::black_box(
-            SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap()
-        ))
-    }*/
 
     #[test]
     fn test_parse_message() {
@@ -558,13 +557,6 @@ mod tests {
             2728.5
         );
     }
-    /*#[bench]
-    fn bench_parse_message(b: &mut Bencher) {
-
-        b.iter(|| test::black_box(
-            SPNDEF.parse_message(&MSG[..]).unwrap()
-        ))
-    }*/
 
     #[test]
     fn parse_message_closure() {
@@ -573,14 +565,6 @@ mod tests {
             2728.5
         );
     }
-    /*#[bench]
-    fn bench_parse_message_closure(b: &mut Bencher) {
-        let parse = SPNDEF.parser();
-
-        b.iter(|| test::black_box(
-            parse(&MSG[..]).unwrap()
-        ))
-    }*/
 
     #[cfg(feature = "use-socketcan")]
     #[test]
@@ -597,20 +581,7 @@ mod tests {
             2728.5
         );
     }
-    /*#[cfg(feature = "use-socketcan")]
-    #[bench]
-    fn bench_parse_canframe(b: &mut Bencher) {
-        let frame = CANFrame::new(
-            0,
-            &MSG[..],
-            false,
-            false
-        ).unwrap();
 
-        b.iter(|| test::black_box(
-            SPNDEF.parse_message(&frame).unwrap()
-        ))
-    }*/
     #[cfg(feature = "use-socketcan")]
     #[test]
     fn parse_canframe_closure() {
@@ -619,15 +590,6 @@ mod tests {
             2728.5
         );
     }
-    /*#[cfg(feature = "use-socketcan")]
-    #[bench]
-    fn bench_parse_canframe_closure(b: &mut Bencher) {
-        let parse = SPNDEF.parser();
-
-        b.iter(|| test::black_box(
-            parse(&FRAME as &CANFrame).unwrap()
-        ))
-    }*/
 
 }
 

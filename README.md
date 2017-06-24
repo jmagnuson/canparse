@@ -39,7 +39,7 @@ fn main() {
     for l in br.lines() {
         let line = l.unwrap();
         if let Some(entry) = Entry::from_str(line.as_str()).ok() {
-            lib.add_entry(entry).unwrap();
+            lib.add_entry(entry).ok();
         }
     }
 
