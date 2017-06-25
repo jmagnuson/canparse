@@ -25,23 +25,12 @@ implemented as folows:
 ```rust
 extern crate canparse;
 
-use canparse::{PgnLibrary, SpnDefinition, Entry, ParseMessage};
-use std::str::FromStr;
-use std::collections::HashMap;
-use std::io::BufRead;
+use canparse::{PgnLibrary, SpnDefinition, ParseMessage};
 
 fn main() {
-    let mut lib = PgnLibrary::new( HashMap::default() );
 
-    let br = include_bytes!("./j1939.dbc");
-
-    // Parse db lines into PgnLibrary
-    for l in br.lines() {
-        let line = l.unwrap();
-        if let Some(entry) = Entry::from_str(line.as_str()).ok() {
-            lib.add_entry(entry).ok();
-        }
-    }
+    // Parse dbc file into PgnLibrary
+    fn lib = PgnLibrary::from_dbc_file("./j1939.dbc").unwrap();
 
     // Pull signal definition for engine speed
     let enginespeed_def: &SpnDefinition = lib

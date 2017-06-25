@@ -290,7 +290,7 @@ impl FromStr for Entry {
                 },
                 None => panic!("Parsing failed")
             }.unwrap()
-        }).ok_or("Pattern match failed".to_string())
+        }).ok_or_else(|| "Pattern match failed".to_string())
     }
 }
 
