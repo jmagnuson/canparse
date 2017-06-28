@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use std::marker::Sized;
 use std::str::FromStr;
 use std::io::prelude::*;
+use std::io;
 use std::io::BufReader;
+use std::path::Path;
 use std::fs::File;
 use dbc::*;
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
@@ -36,6 +38,34 @@ impl PgnLibrary {
         PgnLibrary { last_id:0, pgns:pgns }
     }
 
+    /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`.  This
+    /// function ignores unparsable lines as well as `Entry` variants which don't apply to
+    /// `PgnLibrary` (such as `Entry::Version`).  Fails on `io::Error`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use canparse::PgnLibrary;
+    ///
+    /// let lib: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
+    ///
+    /// ```
+    pub fn from_dbc_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let mut lib = PgnLibrary::default();
+
+        let f = File::open(path)?;
+        let f = BufReader::new(f);
+
+        for l in f.lines() {
+            let line = l?;
+            if let Some(entry) = Entry::from_str(line.as_str()).ok() {
+                lib.add_entry(entry).ok();
+            }
+        }
+
+        Ok(lib)
+    }
+
     /// Converts/combines DBC `Entry` values into entries within `PgnLibrary`.  Different `Entry`
     /// variants can modify the same internal entry, hence the need for mutability.  This function
     /// is meant to be called when parsing lines in a `dbc` file.
@@ -56,7 +86,6 @@ impl PgnLibrary {
     ///     let line = l.unwrap();
     ///     if let Some(entry) = Entry::from_str(line.as_str()).ok() {
     ///         lib.add_entry(entry).ok();
-    ///
     ///     }
     /// }
     /// ```
