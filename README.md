@@ -11,10 +11,11 @@ the PGN/SPN schema.
 
 ## Usage
 
-This crate is not yet on [crates.io](https://crates.io), but can be included in `Cargo.toml` with:
+Add canparse to your `Cargo.toml` with:
+
 ```toml
 [dependencies]
-canparse = { git = "https://github.com/jmagnuson/canparse.git" }
+canparse = "0.1.1"
 ```
 
 ## Example
