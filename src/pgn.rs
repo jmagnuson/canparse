@@ -80,7 +80,7 @@ impl PgnLibrary {
     ///
     /// let mut lib = PgnLibrary::new( HashMap::default() );
     ///
-    /// let br = include_bytes!("./tests/data/sample.dbc");
+    /// let br = include_bytes!("../tests/data/sample.dbc");
     ///
     /// for l in br.lines() {
     ///     let line = l.unwrap();
