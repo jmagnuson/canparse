@@ -1,5 +1,8 @@
 # canparse
 
+[![crates.io](http://meritbadge.herokuapp.com/canparse)](https://crates.io/crates/canparse)
+[![Build Status](https://travis-ci.org/jmagnuson/canparse.svg?branch=master)](https://travis-ci.org/jmagnuson/canparse)
+
 A CAN signal and definition parser, written in Rust.
 
 The goal of canparse is to provide a means of converting CAN frames into

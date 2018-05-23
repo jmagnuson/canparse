@@ -3,6 +3,10 @@ name = "canparse"
 version = "0.1.1"
 authors = ["jmagnuson"]
 description = "A CAN signal and definition parser"
+repository = "https://github.com/jmagnuson/canparse"
+documentation = "https://docs.rs/canparse"
+readme = "README.md"
+keywords = ["can", "socketcan", "j1939", "dbc"]
 license = "MIT/Apache-2.0"
 
 [lib]
