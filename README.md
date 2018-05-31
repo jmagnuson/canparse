@@ -53,7 +53,8 @@ using `SpnDefinition` values.
 
 ## Alternatives
 
-- [canmatrix](https://github.com/ebroecker/canmatrix) (C++)
+- [canmatrix](https://github.com/ebroecker/canmatrix) (Python)
+- [libcanardbc](https://github.com/Polyconseil/libcanardbc) (C++)
 - [CANBabel](https://github.com/julietkilo/CANBabel) (Java)
 - [pyvit](https://github.com/linklayer/pyvit) (Python)
 - [Kayak](https://github.com/dschanoeh/Kayak) (Java, OSS format `kcd`)
