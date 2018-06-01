@@ -30,12 +30,12 @@ implemented as folows:
 ```rust
 extern crate canparse;
 
-use canparse::{PgnLibrary, SpnDefinition, ParseMessage};
+use canparse::pgn::{PgnLibrary, SpnDefinition, ParseMessage};
 
 fn main() {
 
     // Parse dbc file into PgnLibrary
-    fn lib = PgnLibrary::from_dbc_file("./j1939.dbc").unwrap();
+    let lib = PgnLibrary::from_dbc_file("./j1939.dbc").unwrap();
 
     // Pull signal definition for engine speed
     let enginespeed_def: &SpnDefinition = lib
