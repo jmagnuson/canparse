@@ -1,3 +1,5 @@
+//! CANdb definition parsing
+
 #![allow(non_upper_case_globals)]
 
 use num::FromPrimitive;

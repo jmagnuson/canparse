@@ -1,7 +1,8 @@
 
 extern crate canparse;
 
-use canparse::{PgnLibrary, SpnDefinition, Entry, ParseMessage};
+use canparse::dbc::Entry;
+use canparse::pgn::{PgnLibrary, SpnDefinition, ParseMessage};
 use std::str::FromStr;
 use std::collections::HashMap;
 use std::io::BufRead;

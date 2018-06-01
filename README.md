@@ -1,5 +1,9 @@
 # canparse
 
+[![crates.io](http://meritbadge.herokuapp.com/canparse)](https://crates.io/crates/canparse)
+[![Build Status](https://travis-ci.org/jmagnuson/canparse.svg?branch=master)](https://travis-ci.org/jmagnuson/canparse)
+[![Coverage Status](https://coveralls.io/repos/github/jmagnuson/canparse/badge.svg)](https://coveralls.io/github/jmagnuson/canparse)
+
 A CAN signal and definition parser, written in Rust.
 
 The goal of canparse is to provide a means of converting CAN frames into
@@ -26,12 +30,12 @@ implemented as folows:
 ```rust
 extern crate canparse;
 
-use canparse::{PgnLibrary, SpnDefinition, ParseMessage};
+use canparse::pgn::{PgnLibrary, SpnDefinition, ParseMessage};
 
 fn main() {
 
     // Parse dbc file into PgnLibrary
-    fn lib = PgnLibrary::from_dbc_file("./j1939.dbc").unwrap();
+    let lib = PgnLibrary::from_dbc_file("./j1939.dbc").unwrap();
 
     // Pull signal definition for engine speed
     let enginespeed_def: &SpnDefinition = lib

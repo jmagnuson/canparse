@@ -1,3 +1,5 @@
+//! Signal processing using PGN/SPN definitions.
+
 use regex::Regex;
 use std::collections::HashMap;
 use std::marker::Sized;
@@ -45,7 +47,7 @@ impl PgnLibrary {
     /// # Example
     ///
     /// ```rust
-    /// use canparse::PgnLibrary;
+    /// use canparse::pgn::PgnLibrary;
     ///
     /// let lib: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
     ///
@@ -76,7 +78,8 @@ impl PgnLibrary {
     /// use std::collections::HashMap;
     /// use std::io::BufRead;
     /// use std::str::FromStr;
-    /// use canparse::{PgnLibrary, Entry};
+    /// use canparse::dbc::Entry;
+    /// use canparse::pgn::PgnLibrary;
     ///
     /// let mut lib = PgnLibrary::new( HashMap::default() );
     ///
