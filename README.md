@@ -2,6 +2,7 @@
 
 [![crates.io](http://meritbadge.herokuapp.com/canparse)](https://crates.io/crates/canparse)
 [![Build Status](https://travis-ci.org/jmagnuson/canparse.svg?branch=master)](https://travis-ci.org/jmagnuson/canparse)
+[![Coverage Status](https://coveralls.io/repos/github/jmagnuson/canparse/badge.svg)](https://coveralls.io/github/jmagnuson/canparse)
 
 A CAN signal and definition parser, written in Rust.
 
