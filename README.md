@@ -2,7 +2,8 @@
 
 [![crates.io](http://meritbadge.herokuapp.com/canparse)](https://crates.io/crates/canparse)
 [![Build Status](https://travis-ci.org/jmagnuson/canparse.svg?branch=master)](https://travis-ci.org/jmagnuson/canparse)
-[![Coverage Status](https://coveralls.io/repos/github/jmagnuson/canparse/badge.svg)](https://coveralls.io/github/jmagnuson/canparse)
+[![codecov](https://codecov.io/gh/jmagnuson/canparse/branch/master/graph/badge.svg)](https://codecov.io/gh/jmagnuson/canparse)
+
 
 A CAN signal and definition parser, written in Rust.
 
@@ -12,6 +13,8 @@ One common application is the [J1939](https://en.wikipedia.org/wiki/SAE_J1939)
 spec, which defines a set of common parameters for heavy-duty trucks and other vehicles.
 `PgnLibrary` is also included as an application of DBC, to give first-class support for
 the PGN/SPN schema.
+
+[Documentation](https://docs.rs/canparse)
 
 ## Usage
 

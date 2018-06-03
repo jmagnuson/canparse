@@ -2,12 +2,15 @@
 
 use regex::Regex;
 use std::collections::HashMap;
+use std::error::Error;
 use std::marker::Sized;
 use std::str::FromStr;
 use std::io::prelude::*;
 use std::io;
 use std::io::BufReader;
 use std::path::Path;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 use std::fs::File;
 use dbc::*;
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
@@ -17,13 +20,14 @@ use socketcan::CANFrame;
 
 /// Trait for converting `Entry` values into a library's own entries.
 pub trait FromDbc {
+    type Err;
 
     /// Converts an `Entity` value from scratch.
-    fn from_entry(entry: Entry) -> Result<Self, String> where Self: Sized;
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized;
 
     /// Merges the given `Entity` with a `mut` version of the library's entity.  Useful for when
     /// multiple `Entry` types contribute to various attributes within the same destination.
-    fn merge_entry(&mut self, entry: Entry) -> Result<(), String>;
+    fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err>;
 }
 
 /// A library used to translate CAN signals into desired values.
@@ -60,7 +64,7 @@ impl PgnLibrary {
 
         for l in f.lines() {
             let line = l?;
-            if let Some(entry) = Entry::from_str(line.as_str()).ok() {
+            if let Ok(entry) = Entry::from_str(line.as_str()) {
                 lib.add_entry(entry).ok();
             }
         }
@@ -172,17 +176,99 @@ impl PgnDefinition {
 }
 // TODO: PgnDefinition Builder pattern
 
+/// Error returned on failure to parse `*Definition` type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseDefinitionError {
+    kind: DefinitionErrorKind,
+}
+
+impl ParseDefinitionError {
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        self.kind.__description()
+    }
+
+    #[doc(hidden)]
+    pub fn __cause(&self) -> Option<&Error> {
+        self.kind.__cause()
+    }
+}
+
+impl Display for ParseDefinitionError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.__description())
+    }
+}
+
+impl Error for ParseDefinitionError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        self.__cause()
+    }
+}
+
+/// Internal type for `*Definition` parsing errors.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DefinitionErrorKind {
+    /// Internal `Entry` parsing error
+    Entry(super::dbc::ParseEntryError),
+    /// `Entry` type not applicable in constructing Definition
+    UnusedEntry(super::dbc::EntryType),
+}
+
+impl DefinitionErrorKind {
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        match self {
+            DefinitionErrorKind::Entry(_) => "internal Entry parsing error",
+            DefinitionErrorKind::UnusedEntry(_) => "Entry type not applicable in constructing Definition",
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn __cause(&self) -> Option<&Error> {
+        match self {
+            DefinitionErrorKind::Entry(e) => Some(e),
+            DefinitionErrorKind::UnusedEntry(e) => None,
+        }
+    }
+}
+
+impl Display for DefinitionErrorKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let s = self.__description();
+        write!(f, "{}", s)
+    }
+}
+
+impl From<DefinitionErrorKind> for ParseDefinitionError {
+    fn from(kind: DefinitionErrorKind) -> Self {
+        ParseDefinitionError {
+            kind
+        }
+    }
+}
+
 impl FromStr for PgnDefinition {
-    type Err = String;
+    type Err = ParseDefinitionError;
 
     /// `&str` -> `PgnDefinition` via `dbc::Entry` (though probably won't be used).
-    fn from_str(line: &str) -> Result<Self, String> where Self: Sized + FromDbc {
-        Entry::from_str(line).and_then(|entry| Self::from_entry(entry))
+    fn from_str(line: &str) -> Result<Self, Self::Err>
+        where Self: Sized + FromDbc
+    {
+        Entry::from_str(line)
+            .map_err(|e| DefinitionErrorKind::Entry(e).into())
+            .and_then(|entry| Self::from_entry(entry))
     }
 }
 
 impl FromDbc for PgnDefinition {
-    fn from_entry(entry: Entry) -> Result<Self, String> where Self: Sized {
+    type Err = ParseDefinitionError;
+
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized {
         match entry {
             Entry::MessageDefinition ( MessageDefinition { id, name, message_len, sending_node }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
@@ -199,11 +285,11 @@ impl FromDbc for PgnDefinition {
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(pgn, pgn_long, "".to_string(), "".to_string(), 0, HashMap::new()))
             }
-            _ => Err("Could not map entry to PgnDefinition".to_string())
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
         }
     }
 
-    fn merge_entry(&mut self, entry: Entry) -> Result<(), String> {
+    fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
             Entry::MessageDefinition ( MessageDefinition { id, name, message_len, sending_node }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
@@ -253,16 +339,10 @@ impl FromDbc for PgnDefinition {
                 }
                 Ok(())
             },
-            _ => Err("Could not map entry to PgnDefinition".to_string())
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
         }
     }
 }
-
-/*impl FromDbc for PgnDefinition {
-    fn from_dbc(line: String) -> Result<Self, &'static str> {
-        // TODO: Populate based on `processDbcLine` in `PgnLibrary`
-    }
-}*/
 
 /// Suspect Parameter Number definition
 #[derive(Debug, PartialEq, Clone)]
@@ -441,16 +521,22 @@ impl <'a> ParseMessage<&'a CANFrame> for SpnDefinition {
 }
 
 impl FromStr for SpnDefinition {
-    type Err = String;
+    type Err = ParseDefinitionError;
 
     /// `&str` -> `SpnDefinition` via `dbc::Entry` (though probably won't be used).
-    fn from_str(line: &str) -> Result<Self, String> where Self: Sized + FromDbc {
-        Entry::from_str(line).and_then(|entry| Self::from_entry(entry))
+    fn from_str(line: &str) -> Result<Self, Self::Err>
+        where Self: Sized + FromDbc
+    {
+        Entry::from_str(line)
+            .map_err(|e| DefinitionErrorKind::Entry(e).into())
+            .and_then(|entry| Self::from_entry(entry))
     }
 }
 
 impl FromDbc for SpnDefinition {
-    fn from_entry(entry: Entry) -> Result<Self, String> where Self: Sized {
+    type Err = ParseDefinitionError;
+
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized {
         match entry {
             Entry::SignalDefinition ( signal_definition ) =>
                 Ok(signal_definition.into()),
@@ -458,11 +544,11 @@ impl FromDbc for SpnDefinition {
                 Ok(signal_description.into()),
             Entry::SignalAttribute ( signal_attribute ) =>
                 Ok(signal_attribute.into()),
-            _ => Err("Could not map entry to SpnDefinition.".to_string())
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
         }
     }
 
-    fn merge_entry(&mut self, entry: Entry) -> Result<(), String> {
+    fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
             Entry::SignalDefinition ( SignalDefinition { name, start_bit, bit_len, little_endian, signed, scale, offset, min_value, max_value, units, .. }) => {
                 self.name = name; self.start_bit = start_bit; self.bit_len = bit_len; self.little_endian = little_endian; self.signed = signed; self.scale = scale; self.offset = offset; self.min_value = min_value; self.units = units;
@@ -476,7 +562,7 @@ impl FromDbc for SpnDefinition {
                 self.name = signal_name; self.id = id; self.number = value.parse().unwrap();
                 Ok(())
             }
-            _ => Err("Could not merge entry with SpnDefinition.".to_string())
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
         }
     }
 
@@ -500,20 +586,21 @@ impl From<SignalAttribute> for SpnDefinition {
 
 #[cfg(test)]
 mod tests {
-    //extern crate test;
 
     #[cfg(feature = "use-socketcan")]
     extern crate socketcan;
 
     use pgn::*;
     use dbc::*;
-    //use test::Bencher;
 
     #[cfg(feature = "use-socketcan")]
     use socketcan::CANFrame;
 
     lazy_static!{
-    static ref PGNLIB: PgnLibrary = PgnLibrary::default();
+    static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
+
+    static ref PGNLIB_ONE: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc")
+        .expect("Failed to create PgnLibrary from file");
 
     static ref SPNDEF: SpnDefinition =
         SpnDefinition::new("Engine_Speed".to_string(), 190, "2364539904".to_string(),
@@ -530,36 +617,34 @@ mod tests {
     static ref MSG: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
     static ref MSG_BE: [u8; 8] = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11];
 
-    }
-
     #[cfg(feature = "use-socketcan")]
-    lazy_static!{
     static ref FRAME: CANFrame = CANFrame::new(
         0,
         &MSG[..],
         false,
         false
     ).unwrap();
+
     }
 
     #[test]
     fn default_pgnlibrary() {
         assert_eq!(
-            PGNLIB.pgns.len(),
+            PGNLIB_EMPTY.pgns.len(),
             0
         );
     }
 
-    // TODO: Compose a dbc file so PGNLIB can be properly tested.
-    /*
     #[test]
     fn get_spndefinition() {
         assert_eq!(
-            *PGNLIB.get_pgn(0xF004).unwrap().spns.get(&"Engine_Speed".to_string()).unwrap(),
+            *PGNLIB_ONE.get_pgn(0xF004)
+                .expect("failed to get PgnDefinition from PgnLibrary")
+                .spns.get(&"Engine_Speed".to_string())
+                .expect("failed to get SpnDefinition from PgnDefinition"),
             *SPNDEF
         );
     }
-    */
 
     #[test]
     fn unsupported_entry() {
@@ -622,6 +707,5 @@ mod tests {
             2728.5
         );
     }
-
 }
 
