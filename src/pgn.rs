@@ -587,14 +587,8 @@ impl From<SignalAttribute> for SpnDefinition {
 #[cfg(test)]
 mod tests {
 
-    #[cfg(feature = "use-socketcan")]
-    extern crate socketcan;
-
     use pgn::*;
     use dbc::*;
-
-    #[cfg(feature = "use-socketcan")]
-    use socketcan::CANFrame;
 
     lazy_static!{
     static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
@@ -616,14 +610,6 @@ mod tests {
 
     static ref MSG: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
     static ref MSG_BE: [u8; 8] = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11];
-
-    #[cfg(feature = "use-socketcan")]
-    static ref FRAME: CANFrame = CANFrame::new(
-        0,
-        &MSG[..],
-        false,
-        false
-    ).unwrap();
 
     }
 
@@ -683,29 +669,47 @@ mod tests {
         );
     }
 
+
     #[cfg(feature = "use-socketcan")]
-    #[test]
-    fn test_parse_canframe() {
-        let frame = CANFrame::new(
+    mod socketcan {
+        extern crate socketcan;
+
+        use super::*;
+
+        use socketcan::CANFrame;
+
+        lazy_static!{
+        static ref FRAME: CANFrame = CANFrame::new(
             0,
             &MSG[..],
             false,
             false
         ).unwrap();
+        }
 
-        assert_eq!(
-            SPNDEF.parse_message(&frame).unwrap(),
-            2728.5
-        );
-    }
+        #[test]
+        fn parse_canframe_closure() {
+            assert_eq!(
+                SPNDEF.parser()(&FRAME as &CANFrame).unwrap(),
+                2728.5
+            );
+        }
 
-    #[cfg(feature = "use-socketcan")]
-    #[test]
-    fn parse_canframe_closure() {
-        assert_eq!(
-            SPNDEF.parser()(&FRAME as &CANFrame).unwrap(),
-            2728.5
-        );
+        #[test]
+        fn test_parse_canframe() {
+            let frame = CANFrame::new(
+                0,
+                &MSG[..],
+                false,
+                false
+            ).unwrap();
+
+            assert_eq!(
+                SPNDEF.parse_message(&frame).unwrap(),
+                2728.5
+            );
+        }
+
     }
 }
 
