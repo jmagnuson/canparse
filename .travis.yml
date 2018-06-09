@@ -5,6 +5,8 @@ rust:
   - nightly
 
 script:
+  - cargo build --verbose --no-default-features
+  - cargo test --no-run --verbose --no-default-features
   - cargo build --verbose --features "use-socketcan"
   - cargo test --verbose --features "use-socketcan"
 
