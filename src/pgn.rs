@@ -644,12 +644,12 @@ mod tests {
     #[test]
     fn test_parse_array() {
         assert_eq!(
-        SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(),
-        2728.5
+            SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(),
+            2728.5
         );
         assert_eq!(
-        SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
-        2728.5
+            SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
+            2728.5
         );
     }
 
@@ -659,12 +659,20 @@ mod tests {
             SPNDEF.parse_message(&MSG[..]).unwrap(),
             2728.5
         );
+        assert_eq!(
+            SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(),
+            2728.5
+        );
     }
 
     #[test]
     fn parse_message_closure() {
         assert_eq!(
             SPNDEF.parser()(&MSG[..]).unwrap(),
+            2728.5
+        );
+        assert_eq!(
+            SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(),
             2728.5
         );
     }
@@ -685,6 +693,12 @@ mod tests {
             false,
             false
         ).unwrap();
+        static ref FRAME_BE: CANFrame = CANFrame::new(
+            0,
+            &MSG_BE[..],
+            false,
+            false
+        ).unwrap();
         }
 
         #[test]
@@ -693,19 +707,20 @@ mod tests {
                 SPNDEF.parser()(&FRAME as &CANFrame).unwrap(),
                 2728.5
             );
+            assert_eq!(
+                SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(),
+                2728.5
+            );
         }
 
         #[test]
         fn test_parse_canframe() {
-            let frame = CANFrame::new(
-                0,
-                &MSG[..],
-                false,
-                false
-            ).unwrap();
-
             assert_eq!(
-                SPNDEF.parse_message(&frame).unwrap(),
+                SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(),
+                2728.5
+            );
+            assert_eq!(
+                SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
             );
         }
