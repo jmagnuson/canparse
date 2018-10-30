@@ -383,28 +383,19 @@ fn parse_array(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32
 /// the real calculations happen.
 fn parse_message(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32, offset: f32, msg: &[u8]) -> Option<f32> {
 
-    let num_bytes: usize = f32::ceil( (bit_len as f32)/8.0 ) as usize;
-    let byte_pos: usize = f32::floor( (start_bit as f32)/8.0 ) as usize;
-    let mut val32: u32 = 0;
-
-    // TODO: There has to be a clean way to parameterize iter transforms
-    if little_endian {
-        for (i, n) in msg.iter().skip(byte_pos).take(num_bytes).enumerate() {
-            val32 += ((n & 0xFF) as u32) * (SHIFT_BYTE_LOOKUP[i] as u32);
-        }
-    } else {
-        for (i, n) in msg.iter().rev().skip(byte_pos).take(num_bytes).enumerate() {
-            val32 += ((n & 0xFF) as u32) * (SHIFT_BYTE_LOOKUP[i] as u32);
-        }
+    if msg.len() < 8 {
+        return None
     }
+    let msg64: u64 = match little_endian {
+        true => LittleEndian::read_u64(msg),
+        false => BigEndian::read_u64(msg)
+    };
 
-    let bit_pos = start_bit % 8;
-    val32 >>= bit_pos;
+    let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
 
-    let bit_mask = 2u32.pow(bit_len as u32) - 1;
-    val32 &= bit_mask;
-
-    Some(val32 as f32 * scale + offset)
+    Some(
+        ( ( ( msg64 >> start_bit ) & bit_mask ) as f32 ) * scale + offset
+    )
 }
 
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
@@ -663,6 +654,8 @@ mod tests {
             SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(),
             2728.5
         );
+        assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
+        assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
     }
 
     #[test]
