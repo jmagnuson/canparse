@@ -132,7 +132,7 @@ impl PgnLibrary {
     }
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
-    pub fn get_spn(&self, name: &String) -> Option<&SpnDefinition> {
+    pub fn get_spn(&self, name: &str) -> Option<&SpnDefinition> {
         self.pgns.iter().filter_map(|pgn| {
             pgn.1.spns.get(name)
         }).next()
@@ -383,28 +383,19 @@ fn parse_array(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32
 /// the real calculations happen.
 fn parse_message(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32, offset: f32, msg: &[u8]) -> Option<f32> {
 
-    let num_bytes: usize = f32::ceil( (bit_len as f32)/8.0 ) as usize;
-    let byte_pos: usize = f32::floor( (start_bit as f32)/8.0 ) as usize;
-    let mut val32: u32 = 0;
-
-    // TODO: There has to be a clean way to parameterize iter transforms
-    if little_endian {
-        for (i, n) in msg.iter().skip(byte_pos).take(num_bytes).enumerate() {
-            val32 += ((n & 0xFF) as u32) * (SHIFT_BYTE_LOOKUP[i] as u32);
-        }
-    } else {
-        for (i, n) in msg.iter().rev().skip(byte_pos).take(num_bytes).enumerate() {
-            val32 += ((n & 0xFF) as u32) * (SHIFT_BYTE_LOOKUP[i] as u32);
-        }
+    if msg.len() < 8 {
+        return None
     }
+    let msg64: u64 = match little_endian {
+        true => LittleEndian::read_u64(msg),
+        false => BigEndian::read_u64(msg)
+    };
 
-    let bit_pos = start_bit % 8;
-    val32 >>= bit_pos;
+    let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
 
-    let bit_mask = 2u32.pow(bit_len as u32) - 1;
-    val32 &= bit_mask;
-
-    Some(val32 as f32 * scale + offset)
+    Some(
+        ( ( ( msg64 >> start_bit ) & bit_mask ) as f32 ) * scale + offset
+    )
 }
 
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
@@ -644,12 +635,12 @@ mod tests {
     #[test]
     fn test_parse_array() {
         assert_eq!(
-        SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(),
-        2728.5
+            SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(),
+            2728.5
         );
         assert_eq!(
-        SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
-        2728.5
+            SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
+            2728.5
         );
     }
 
@@ -659,12 +650,22 @@ mod tests {
             SPNDEF.parse_message(&MSG[..]).unwrap(),
             2728.5
         );
+        assert_eq!(
+            SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(),
+            2728.5
+        );
+        assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
+        assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
     }
 
     #[test]
     fn parse_message_closure() {
         assert_eq!(
             SPNDEF.parser()(&MSG[..]).unwrap(),
+            2728.5
+        );
+        assert_eq!(
+            SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(),
             2728.5
         );
     }
@@ -685,6 +686,12 @@ mod tests {
             false,
             false
         ).unwrap();
+        static ref FRAME_BE: CANFrame = CANFrame::new(
+            0,
+            &MSG_BE[..],
+            false,
+            false
+        ).unwrap();
         }
 
         #[test]
@@ -693,19 +700,20 @@ mod tests {
                 SPNDEF.parser()(&FRAME as &CANFrame).unwrap(),
                 2728.5
             );
+            assert_eq!(
+                SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(),
+                2728.5
+            );
         }
 
         #[test]
         fn test_parse_canframe() {
-            let frame = CANFrame::new(
-                0,
-                &MSG[..],
-                false,
-                false
-            ).unwrap();
-
             assert_eq!(
-                SPNDEF.parse_message(&frame).unwrap(),
+                SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(),
+                2728.5
+            );
+            assert_eq!(
+                SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
             );
         }
