@@ -132,7 +132,7 @@ impl PgnLibrary {
     }
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
-    pub fn get_spn(&self, name: &String) -> Option<&SpnDefinition> {
+    pub fn get_spn(&self, name: &str) -> Option<&SpnDefinition> {
         self.pgns.iter().filter_map(|pgn| {
             pgn.1.spns.get(name)
         }).next()

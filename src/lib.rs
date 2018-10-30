@@ -24,7 +24,7 @@
 //!
 //!     // Pull signal definition for engine speed
 //!     let enginespeed_def: &SpnDefinition = lib
-//!         .get_spn(&"Engine_Speed".to_string()).unwrap();
+//!         .get_spn(&"Engine_Speed").unwrap();
 //!
 //!     // Parse frame containing engine speed
 //!     let msg: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
@@ -33,6 +33,8 @@
 //!     println!("Engine speed: {}", engine_speed);
 //! }
 //! ```
+
+#![cfg_attr(feature = "cargo-clippy", allow(redundant_field_names))]
 
 #![allow(non_snake_case, non_camel_case_types)]
 #![allow(unused_variables, dead_code)]
