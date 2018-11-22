@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 - Change `get_spn` to take `&str` input
 - Speed up parsing PGN from `&[u8]`
 
+### Fixed
+- Explicitly parse file passed into `PgnLibrary::from_dbc_file` using
+  ISO-8859-1 codec
+
 ## [0.1.2] - 2018-06-09
 
 ### Changed

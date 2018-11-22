@@ -5,18 +5,17 @@ use canparse::dbc::Entry;
 use canparse::pgn::{PgnLibrary, SpnDefinition, ParseMessage};
 use std::str::FromStr;
 use std::collections::HashMap;
-use std::io::BufRead;
 
 #[test]
 fn pgnlib_build_parse() {
     let mut lib = PgnLibrary::new( HashMap::default() );
 
-    let br = include_bytes!("./data/sample.dbc");
+    let data: String = include_bytes!("./data/sample.dbc")
+        .iter().map(|b| *b as char).collect();
 
     // Parse db lines into PgnLibrary
-    for l in br.lines() {
-        let line = l.unwrap();
-        if let Ok(entry) = Entry::from_str(line.as_str()) {
+    for line in data.lines() {
+        if let Ok(entry) = Entry::from_str(&line) {
             lib.add_entry(entry).ok();
         }
     }
