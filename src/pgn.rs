@@ -1,5 +1,7 @@
 //! Signal processing using PGN/SPN definitions.
 
+use encoding::{CodecError, DecoderTrap, Encoding};
+use encoding::all::ISO_8859_1;
 use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
@@ -45,7 +47,7 @@ impl PgnLibrary {
     }
 
     /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`.  This
-    /// function ignores unparsable lines as well as `Entry` variants which don't apply to
+    /// function ignores unparseable lines as well as `Entry` variants which don't apply to
     /// `PgnLibrary` (such as `Entry::Version`).  Fails on `io::Error`.
     ///
     /// # Example
@@ -56,16 +58,57 @@ impl PgnLibrary {
     /// let lib: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
     ///
     /// ```
-    pub fn from_dbc_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    pub fn from_dbc_file<P>(path: P) -> io::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        Self::from_encoded_dbc_file(path, ISO_8859_1)
+    }
+
+    /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`, using
+    /// a specified `Encoding` codec. This function ignores unparseable lines as well as `Entry`
+    /// variants which don't apply to `PgnLibrary` (such as `Entry::Version`).
+    ///
+    /// This function is currently considered unstable and subject to change or removal.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate canparse;
+    /// extern crate encoding;
+    ///
+    /// use canparse::pgn::PgnLibrary;
+    /// use encoding::Encoding;
+    /// use encoding::all::ISO_8859_1;
+    ///
+    /// let lib: PgnLibrary = PgnLibrary::from_encoded_dbc_file("./tests/data/sample.dbc",
+    ///                                                         ISO_8859_1).unwrap();
+    ///
+    /// ```
+    #[doc(hidden)]
+    pub fn from_encoded_dbc_file<P, E>(path: P, encoding: &E) -> io::Result<Self>
+    where
+        P: AsRef<Path>,
+        E: Encoding,
+    {
         let mut lib = PgnLibrary::default();
 
-        let f = File::open(path)?;
-        let f = BufReader::new(f);
+        let data = File::open(path)
+            .and_then(|mut f| {
+                let mut contents: Vec<u8> = Vec::new();
+                f.read_to_end(&mut contents)
+                    .map(|_bytes_read| contents)
+            })
+            .and_then(|mut contents| {
+                encoding.decode(contents.as_slice(), DecoderTrap::Replace)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            })?;
 
-        for l in f.lines() {
-            let line = l?;
-            if let Ok(entry) = Entry::from_str(line.as_str()) {
-                lib.add_entry(entry).ok();
+        for (idx, line) in data.lines().enumerate() {
+            if let Ok(entry) = Entry::from_str(line) {
+                if let Err(_e) = lib.add_entry(entry) {
+                    // TODO: Handle add_entry error
+                }
             }
         }
 
@@ -87,11 +130,13 @@ impl PgnLibrary {
     ///
     /// let mut lib = PgnLibrary::new( HashMap::default() );
     ///
-    /// let br = include_bytes!("../tests/data/sample.dbc");
+    /// // File is ISO-8859-1 and needs to be converted before iterating
+    /// // with `lines`. `PgnLibrary::from_dbc_file` does this for you.
+    /// let data: String = include_bytes!("../tests/data/sample.dbc")
+    ///     .iter().map(|b| *b as char).collect();
     ///
-    /// for l in br.lines() {
-    ///     let line = l.unwrap();
-    ///     if let Some(entry) = Entry::from_str(line.as_str()).ok() {
+    /// for line in data.lines() {
+    ///     if let Some(entry) = Entry::from_str(line).ok() {
     ///         lib.add_entry(entry).ok();
     ///     }
     /// }

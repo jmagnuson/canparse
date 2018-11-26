@@ -43,6 +43,7 @@
 
 #![crate_name = "canparse"]
 
+extern crate encoding;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate lazy_static;
 extern crate num;
