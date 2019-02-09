@@ -1,7 +1,7 @@
 [package]
 name = "canparse"
-version = "0.1.2"
-authors = ["jmagnuson"]
+version = "0.1.3"
+authors = ["Jon Magnuson <jon.magnuson@gmail.com>"]
 description = "A CAN signal and definition parser"
 repository = "https://github.com/jmagnuson/canparse"
 documentation = "https://docs.rs/canparse"

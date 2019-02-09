@@ -22,7 +22,7 @@ Add canparse to your `Cargo.toml` with:
 
 ```toml
 [dependencies]
-canparse = "0.1.2"
+canparse = "0.1"
 ```
 
 ## Example
