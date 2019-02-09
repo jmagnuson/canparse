@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 
 ## [Unreleased]
 
+## [0.1.3] - 2018-02-09
+
 ### Changed
 - Change `get_spn` to take `&str` input
 - Speed up parsing PGN from `&[u8]`
@@ -26,5 +28,6 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 
 ## [0.1.1] - 2018-05-22
 
-[Unreleased]: https://github.com/jmagnuson/canparse/compare/v0.1.2...master
+[Unreleased]: https://github.com/jmagnuson/canparse/compare/v0.1.3...master
+[0.1.3]: https://github.com/jmagnuson/canparse/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jmagnuson/canparse/compare/v0.1.1...v0.1.2

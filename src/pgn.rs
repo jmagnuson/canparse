@@ -662,7 +662,7 @@ mod tests {
         assert_eq!(
             *PGNLIB_ONE.get_pgn(0xF004)
                 .expect("failed to get PgnDefinition from PgnLibrary")
-                .spns.get(&"Engine_Speed".to_string())
+                .spns.get("Engine_Speed")
                 .expect("failed to get SpnDefinition from PgnDefinition"),
             *SPNDEF
         );
