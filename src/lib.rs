@@ -46,7 +46,6 @@
 extern crate encoding;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate lazy_static;
-extern crate num;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate byteorder;
