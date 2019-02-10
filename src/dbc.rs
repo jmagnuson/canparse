@@ -179,6 +179,230 @@ impl Display for EntryType {
     }
 }
 
+pub mod nom {
+    use super::*;
+    use nom::{alphanumeric, anychar, digit, float, line_ending, space, space0};
+    use std::str::FromStr;
+
+    // TODO: convert `tag!(" ")` to `space`
+
+    named! {
+        quoted_str<&str, String>,
+        map!(
+            delimited!(
+                tag!("\""),
+                escaped_transform!(
+                    none_of!("\\\""),
+                    '\\',
+                    alt!(
+                        tag!("\\") => { |_| "\\" }
+                      | tag!("\"") => { |_| "\"" }
+                    )),
+                tag!("\"")),
+            |data| data)
+    }
+
+    named!(pub entry<&str, Entry>, alt!(
+        version                => { |r| Entry::Version(r) } |
+        bus_configuration      => { |r| Entry::BusConfiguration(r) } |
+        message_definition     => { |r| Entry::MessageDefinition(r) } |
+        message_description    => { |r| Entry::MessageDescription(r) } |
+        message_attribute      => { |r| Entry::MessageAttribute(r) } |
+        signal_definition      => { |r| Entry::SignalDefinition(r) } |
+        signal_description     => { |r| Entry::SignalDescription(r) } |
+        signal_attribute       => { |r| Entry::SignalAttribute(r) }
+    ));
+
+    named!(pub version<&str, Version>,
+        do_parse!(
+            tag!("VERSION")   >>
+            tag!(" ")   >>
+            data: quoted_str >>
+            line_ending >>
+            ( Version(data) )
+        )
+    );
+
+    named!(pub bus_configuration<&str, BusConfiguration>,
+        do_parse!(
+            tag!("BS_:")   >>
+            tag!(" ")   >>
+            data: map_res!(
+                take_until_either!("\r\n"),
+                FromStr::from_str) >>
+            line_ending >>
+            ( BusConfiguration(data) )
+        )
+    );
+
+    // FIXME: `space` isn't really correct since there should only be ONE (probably need alt)
+    named!(pub message_definition<&str, MessageDefinition>,
+        do_parse!(
+            tag!("BO_")   >>
+            space >>
+            id: digit >>
+            space >>
+            name: alphanumeric >>
+            space0 >>
+            tag!(":")   >>
+            space >>
+            len: map_res!(
+                digit,
+                FromStr::from_str) >>
+            space >>
+            sending_node: take_until_either!(" \t\r\n") >>
+            space0 >>
+            line_ending >>
+            ( MessageDefinition {
+                id: id.to_string(),
+                name: name.to_string(),
+                message_len: len,
+                sending_node: sending_node.to_string(),
+            } )
+        )
+    );
+
+    named!(pub message_description<&str, MessageDescription>,
+        do_parse!(
+            tag!("CM_")   >>
+            space >>
+            tag!("BO_")   >>
+            space >>
+            id: digit >>
+            space >>
+            description: quoted_str >>
+            tag!(";") >>
+            line_ending >>
+            ( MessageDescription {
+                id: id.to_string(),
+                signal_name: "".to_string(),
+                description: description.to_string(),
+            } )
+        )
+    );
+
+    named!(pub message_attribute<&str, MessageAttribute>,
+        do_parse!(
+            tag!("BA_")   >>
+            space >>
+            name: quoted_str >>
+            space >>
+            tag!("BO_")   >>
+            space >>
+            id: digit >>
+            space >>
+            value: digit >>
+            tag!(";") >>
+            line_ending >>
+            ( MessageAttribute {
+                name: name.to_string(),
+                signal_name: "".to_string(),
+                id: id.to_string(),
+                value: value.to_string()
+            } )
+        )
+    );
+
+    named!(pub signal_definition<&str, SignalDefinition>,
+        do_parse!(
+            space >>
+            tag!("SG_") >>
+            space >>
+            name: take_until_either!(" \t") >>
+            space >>
+            tag!(":") >>
+            space >>
+            start_bit: map_res!(
+                digit,
+                FromStr::from_str) >>
+            tag!("|") >>
+            bit_len: map_res!(
+                digit,
+                FromStr::from_str) >>
+            tag!("@") >>
+            little_endian: map!(digit, |d| d == "1") >>
+            signed: alt!(
+                tag!("+") => { |_| false } |
+                tag!("-") => { |_| true } ) >>
+            space >>
+            tag!("(") >>
+            scale: float >>
+            tag!(",") >>
+            offset: float >>
+            tag!(")") >>
+            space >>
+            tag!("[") >>
+            min_value: float >>
+            tag!("|") >>
+            max_value: float >>
+            tag!("]") >>
+            space >>
+            units: quoted_str >>
+            space >>
+            receiving_node: take_until_either!(" \t\r\n") >>
+            line_ending >>
+            ( SignalDefinition {
+                name: name.to_string(),
+                start_bit: start_bit,
+                bit_len: bit_len,
+                little_endian: little_endian,
+                signed: signed,
+                scale: scale,
+                offset: offset,
+                min_value: min_value,
+                max_value: max_value,
+                units: units.to_string(),
+                receiving_node: receiving_node.to_string(),
+            } )
+        )
+    );
+
+    named!(pub signal_description<&str, SignalDescription>,
+        do_parse!(
+            tag!("CM_")   >>
+            space >>
+            tag!("SG_")   >>
+            space >>
+            id: digit >>
+            space >>
+            signal_name: take_until_either!(" \t") >>
+            space >>
+            description: quoted_str >>
+            tag!(";") >>
+            line_ending >>
+            ( SignalDescription {
+                id: id.to_string(),
+                signal_name: signal_name.to_string(),
+                description: description.to_string()
+            } )
+        )
+    );
+
+    named!(pub signal_attribute<&str, SignalAttribute>,
+        do_parse!(
+            tag!("BA_")   >>
+            space >>
+            name: quoted_str >>
+            space >>
+            tag!("SG_")   >>
+            space >>
+            id: digit >>
+            space >>
+            signal_name: take_until_either!(" \t") >>
+            space >>
+            value: digit >>
+            tag!(";") >>
+            line_ending >>
+            ( SignalAttribute {
+                name: name.to_string(),
+                id: id.to_string(),
+                signal_name: signal_name.to_string(),
+                value: value.to_string()
+            } )
+        )
+    );
+}
+
 lazy_static!{
 /// Regex patterns for matching DBC entry lines.
 ///
@@ -459,17 +683,29 @@ mod tests {
                         format!("{}", entry_type),
                     );
                 }
+
+                #[test]
+                fn nom_parse() {
+                    assert_eq!(
+                        nom::$test_name($test_line).unwrap().1,
+                        $expected
+                    );
+                    assert_eq!(
+                        nom::entry($test_line).unwrap().1,
+                        Entry::$entry_type( $expected )
+                    );
+                }
             }
         )
     }
 
     test_entry!( version, Version,
-        "VERSION \"A version string\"",
+        "VERSION \"A version string\"\n",
         Version ( "A version string".to_string() )
     );
 
     test_entry!( message_definition, MessageDefinition,
-        "BO_ 2364539904 EEC1 : 8 Vector__XXX",
+        "BO_ 2364539904 EEC1 : 8 Vector__XXX\n",
         MessageDefinition {
             id: "2364539904".to_string(),
             name: "EEC1".to_string(),
@@ -479,12 +715,12 @@ mod tests {
     );
 
     test_entry!( message_description, MessageDescription,
-        "CM_ BO_ 2364539904 \"Engine Controller\";",
+        "CM_ BO_ 2364539904 \"Engine Controller\";\n",
         MessageDescription { id: "2364539904".to_string(), signal_name: "".to_string(), description: "Engine Controller".to_string()}
     );
 
     test_entry!( message_attribute, MessageAttribute,
-        "BA_ \"SingleFrame\" BO_ 2364539904 0;",
+        "BA_ \"SingleFrame\" BO_ 2364539904 0;\n",
         MessageAttribute {
             name: "SingleFrame".to_string(),
             signal_name: "".to_string(),
@@ -494,7 +730,7 @@ mod tests {
     );
 
     test_entry!( signal_definition, SignalDefinition,
-        " SG_ Engine_Speed : 24|16@1+ (0.125,0) [0|8031.88] \"rpm\" Vector__XXX",
+        " SG_ Engine_Speed : 24|16@1+ (0.125,0) [0|8031.88] \"rpm\" Vector__XXX\n",
         SignalDefinition {
             name: "Engine_Speed".to_string(),
             start_bit: 24,
@@ -511,7 +747,7 @@ mod tests {
     );
 
     test_entry!( signal_description, SignalDescription,
-        "CM_ SG_ 2364539904 Engine_Speed \"A description for Engine speed.\";",
+        "CM_ SG_ 2364539904 Engine_Speed \"A description for Engine speed.\";\n",
         SignalDescription {
             id: "2364539904".to_string(),
             signal_name: "Engine_Speed".to_string(),
@@ -519,21 +755,8 @@ mod tests {
         }
     );
 
-    test_entry!( signal_description_multiline, SignalDescription,
-        "CM_ SG_ 2364539904 Actual_Engine___Percent_Torque_High_Resolution \"A multi- \r \
-        \r \
-        line description for Engine torque.\";",
-        SignalDescription {
-            id: "2364539904".to_string(),
-            signal_name: "Actual_Engine___Percent_Torque_High_Resolution".to_string(),
-            description: "A multi- \r \
-            \r \
-            line description for Engine torque.".to_string()
-        }
-    );
-
     test_entry!( signal_attribute, SignalAttribute,
-        "BA_ \"SPN\" SG_ 2364539904 Engine_Speed 190;",
+        "BA_ \"SPN\" SG_ 2364539904 Engine_Speed 190;\n",
         SignalAttribute {
             name: "SPN".to_string(),
             id: "2364539904".to_string(),
@@ -541,4 +764,19 @@ mod tests {
             value: "190".to_string()
         }
     );
+
+    mod multiline {
+        test_entry!( signal_description, SignalDescription,
+            "CM_ SG_ 2364539904 Actual_Engine___Percent_Torque_High_Resolution \"A multi- \r \
+            \r \
+            line description for Engine torque.\";\n",
+            SignalDescription {
+                id: "2364539904".to_string(),
+                signal_name: "Actual_Engine___Percent_Torque_High_Resolution".to_string(),
+                description: "A multi- \r \
+                \r \
+                line description for Engine torque.".to_string()
+            }
+        );
+    }
 }
