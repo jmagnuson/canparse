@@ -49,6 +49,7 @@ extern crate encoding;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate byteorder;
+#[macro_use] extern crate nom;
 
 #[cfg(feature = "use-socketcan")]
 extern crate socketcan;
