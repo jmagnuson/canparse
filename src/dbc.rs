@@ -2,7 +2,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use num::FromPrimitive;
+use enum_primitive::FromPrimitive;
 use std::str::FromStr;
 use rustc_serialize::{Decodable, Decoder};
 use regex::{Regex, RegexSet};

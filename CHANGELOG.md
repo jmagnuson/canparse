@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 
 ## [Unreleased]
 
+### Changed
+- Update and clean out old deps
+
 ## [0.1.3] - 2018-02-09
 
 ### Changed
