@@ -1,22 +1,22 @@
 //! Signal processing using PGN/SPN definitions.
 
-use encoding::{CodecError, DecoderTrap, Encoding};
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use dbc::{nom as nomparse, *};
 use encoding::all::ISO_8859_1;
+use encoding::{CodecError, DecoderTrap, Encoding};
+use nom;
 use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
-use std::marker::Sized;
-use std::str::FromStr;
-use std::io::prelude::*;
-use std::io;
-use std::io::BufReader;
-use std::path::Path;
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
-use dbc::{nom as nomparse, *};
-use byteorder::{ByteOrder, BigEndian, LittleEndian};
-use nom;
+use std::io;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::marker::Sized;
+use std::path::Path;
+use std::str::FromStr;
 
 #[cfg(feature = "use-socketcan")]
 use socketcan::CANFrame;
@@ -26,7 +26,9 @@ pub trait FromDbc {
     type Err;
 
     /// Converts an `Entity` value from scratch.
-    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized;
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err>
+    where
+        Self: Sized;
 
     /// Merges the given `Entity` with a `mut` version of the library's entity.  Useful for when
     /// multiple `Entry` types contribute to various attributes within the same destination.
@@ -41,10 +43,12 @@ pub struct PgnLibrary {
 }
 
 impl PgnLibrary {
-
     /// Creates a new `PgnLibrary` instance given an existing lookup table.
     pub fn new(pgns: HashMap<u32, PgnDefinition>) -> Self {
-        PgnLibrary { last_id:0, pgns:pgns }
+        PgnLibrary {
+            last_id: 0,
+            pgns: pgns,
+        }
     }
 
     /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`.  This
@@ -97,11 +101,11 @@ impl PgnLibrary {
         let data = File::open(path)
             .and_then(|mut f| {
                 let mut contents: Vec<u8> = Vec::new();
-                f.read_to_end(&mut contents)
-                    .map(|_bytes_read| contents)
+                f.read_to_end(&mut contents).map(|_bytes_read| contents)
             })
             .and_then(|mut contents| {
-                encoding.decode(contents.as_slice(), DecoderTrap::Replace)
+                encoding
+                    .decode(contents.as_slice(), DecoderTrap::Replace)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
             })?;
 
@@ -113,11 +117,11 @@ impl PgnLibrary {
                         // TODO: Handle add_entry error
                     }
                     i = new_i;
-                },
+                }
                 // FIXME: handling `IResult::Err`s could be better
                 Err(nom::Err::Incomplete(_)) => {
                     break;
-                },
+                }
                 Err(_) => {
                     i = &i[1..];
                 }
@@ -155,30 +159,35 @@ impl PgnLibrary {
     /// ```
     pub fn add_entry(&mut self, entry: Entry) -> Result<(), String> {
         let _id: u32 = match entry {
-            Entry::MessageDefinition (MessageDefinition  { ref id, .. }) => id.parse(),
+            Entry::MessageDefinition(MessageDefinition { ref id, .. }) => id.parse(),
             Entry::MessageDescription(MessageDescription { ref id, .. }) => id.parse(),
-            Entry::MessageAttribute( MessageAttribute  { ref id, .. }) => id.parse(),
-            Entry::SignalDefinition ( .. ) => {
-
-                 // no id, and by definition must follow MessageDefinition
+            Entry::MessageAttribute(MessageAttribute { ref id, .. }) => id.parse(),
+            Entry::SignalDefinition(..) => {
+                // no id, and by definition must follow MessageDefinition
                 if self.last_id == 0 {
                     return Err("Tried to add SignalDefinition without last ID.".to_string());
                 }
                 Ok(self.last_id)
-            },
-            Entry::SignalDescription (SignalDescription{ ref id, .. }) => id.parse(),
-            Entry::SignalAttribute (SignalAttribute { ref id, .. }) => id.parse(),
-            _ => { return Err(format!("Unsupported entry: {}.", entry).to_string()); }
-        }.unwrap();
+            }
+            Entry::SignalDescription(SignalDescription { ref id, .. }) => id.parse(),
+            Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id.parse(),
+            _ => {
+                return Err(format!("Unsupported entry: {}.", entry).to_string());
+            }
+        }
+        .unwrap();
 
         // CanId{ DP, PF, PS, SA } => Pgn{ PF, PS }
         let pgn = (_id >> 8) & 0x1FFFF;
 
         self.last_id = _id;
         if self.pgns.contains_key(&pgn) {
-            (*self.pgns.get_mut(&pgn).unwrap()).merge_entry(entry).unwrap();
+            (*self.pgns.get_mut(&pgn).unwrap())
+                .merge_entry(entry)
+                .unwrap();
         } else {
-            self.pgns.insert(pgn, PgnDefinition::from_entry(entry).unwrap());
+            self.pgns
+                .insert(pgn, PgnDefinition::from_entry(entry).unwrap());
         }
         Ok(())
     }
@@ -190,15 +199,16 @@ impl PgnLibrary {
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
     pub fn get_spn(&self, name: &str) -> Option<&SpnDefinition> {
-        self.pgns.iter().filter_map(|pgn| {
-            pgn.1.spns.get(name)
-        }).next()
+        self.pgns
+            .iter()
+            .filter_map(|pgn| pgn.1.spns.get(name))
+            .next()
     }
 }
 
 impl Default for PgnLibrary {
     fn default() -> Self {
-        PgnLibrary::new( HashMap::default() )
+        PgnLibrary::new(HashMap::default())
     }
 }
 
@@ -210,24 +220,25 @@ pub struct PgnDefinition {
     name_abbrev: String,
     description: String,
     length: u32,
-    spns: HashMap<String, SpnDefinition>
+    spns: HashMap<String, SpnDefinition>,
 }
 
 impl PgnDefinition {
-    pub fn new( pgn: u32,
-                pgn_long: u32,
-                name_abbrev: String,
-                description: String,
-                length: u32,
-                spns: HashMap<String,SpnDefinition> ) -> Self {
-
+    pub fn new(
+        pgn: u32,
+        pgn_long: u32,
+        name_abbrev: String,
+        description: String,
+        length: u32,
+        spns: HashMap<String, SpnDefinition>,
+    ) -> Self {
         PgnDefinition {
             pgn: pgn,
             pgn_long: pgn_long,
             name_abbrev: name_abbrev,
             description: description,
             length: length,
-            spns: spns
+            spns: spns,
         }
     }
 }
@@ -281,7 +292,9 @@ impl DefinitionErrorKind {
     pub fn __description(&self) -> &str {
         match self {
             DefinitionErrorKind::Entry(_) => "internal Entry parsing error",
-            DefinitionErrorKind::UnusedEntry(_) => "Entry type not applicable in constructing Definition",
+            DefinitionErrorKind::UnusedEntry(_) => {
+                "Entry type not applicable in constructing Definition"
+            }
         }
     }
 
@@ -303,9 +316,7 @@ impl Display for DefinitionErrorKind {
 
 impl From<DefinitionErrorKind> for ParseDefinitionError {
     fn from(kind: DefinitionErrorKind) -> Self {
-        ParseDefinitionError {
-            kind
-        }
+        ParseDefinitionError { kind }
     }
 }
 
@@ -314,7 +325,8 @@ impl FromStr for PgnDefinition {
 
     /// `&str` -> `PgnDefinition` via `dbc::Entry` (though probably won't be used).
     fn from_str(line: &str) -> Result<Self, Self::Err>
-        where Self: Sized + FromDbc
+    where
+        Self: Sized + FromDbc,
     {
         Entry::from_str(line)
             .map_err(|e| DefinitionErrorKind::Entry(e).into())
@@ -325,82 +337,148 @@ impl FromStr for PgnDefinition {
 impl FromDbc for PgnDefinition {
     type Err = ParseDefinitionError;
 
-    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized {
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err>
+    where
+        Self: Sized,
+    {
         match entry {
-            Entry::MessageDefinition ( MessageDefinition { id, name, message_len, sending_node }) => {
+            Entry::MessageDefinition(MessageDefinition {
+                id,
+                name,
+                message_len,
+                sending_node,
+            }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
                 let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(pgn, pgn_long, name, "".to_string(), 0, HashMap::new()))
-            },
-            Entry::MessageDescription ( MessageDescription { id, signal_name, description }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
-                let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(pgn, pgn_long, "".to_string(), description, 0, HashMap::new()))
-            },
-            Entry::MessageAttribute ( MessageAttribute { name, signal_name, id, value }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
-                let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(pgn, pgn_long, "".to_string(), "".to_string(), 0, HashMap::new()))
+                Ok(PgnDefinition::new(
+                    pgn,
+                    pgn_long,
+                    name,
+                    "".to_string(),
+                    0,
+                    HashMap::new(),
+                ))
             }
-            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
+            Entry::MessageDescription(MessageDescription {
+                id,
+                signal_name,
+                description,
+            }) => {
+                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn = pgn_long & 0x1FFFF;
+                Ok(PgnDefinition::new(
+                    pgn,
+                    pgn_long,
+                    "".to_string(),
+                    description,
+                    0,
+                    HashMap::new(),
+                ))
+            }
+            Entry::MessageAttribute(MessageAttribute {
+                name,
+                signal_name,
+                id,
+                value,
+            }) => {
+                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn = pgn_long & 0x1FFFF;
+                Ok(PgnDefinition::new(
+                    pgn,
+                    pgn_long,
+                    "".to_string(),
+                    "".to_string(),
+                    0,
+                    HashMap::new(),
+                ))
+            }
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into()),
         }
     }
 
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
-            Entry::MessageDefinition ( MessageDefinition { id, name, message_len, sending_node }) => {
+            Entry::MessageDefinition(MessageDefinition {
+                id,
+                name,
+                message_len,
+                sending_node,
+            }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
                 let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn; self.pgn_long = pgn_long; self.length = message_len;
+                self.pgn = pgn;
+                self.pgn_long = pgn_long;
+                self.length = message_len;
                 Ok(())
-            },
-            Entry::MessageDescription ( MessageDescription {id, signal_name, description }) => {
+            }
+            Entry::MessageDescription(MessageDescription {
+                id,
+                signal_name,
+                description,
+            }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
                 let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn; self.pgn_long = pgn_long; self.description = description;
+                self.pgn = pgn;
+                self.pgn_long = pgn_long;
+                self.description = description;
                 Ok(())
-            },
-            Entry::MessageAttribute( MessageAttribute { name, signal_name, id, value }) => {
+            }
+            Entry::MessageAttribute(MessageAttribute {
+                name,
+                signal_name,
+                id,
+                value,
+            }) => {
                 let pgn_long = id.parse::<u32>().unwrap();
                 let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn; self.pgn_long = pgn_long;
+                self.pgn = pgn;
+                self.pgn_long = pgn_long;
                 Ok(())
-            },
-            Entry::SignalDefinition ( wrapped ) => {
+            }
+            Entry::SignalDefinition(wrapped) => {
                 if self.spns.contains_key(&wrapped.name) {
                     (*self.spns.get_mut(&wrapped.name).unwrap())
-                        .merge_entry(Entry::SignalDefinition(wrapped)).unwrap();
+                        .merge_entry(Entry::SignalDefinition(wrapped))
+                        .unwrap();
                 } else {
-                    self.spns.insert(wrapped.name.clone(),
-                                     SpnDefinition::from_entry(Entry::SignalDefinition(wrapped)).unwrap());
+                    self.spns.insert(
+                        wrapped.name.clone(),
+                        SpnDefinition::from_entry(Entry::SignalDefinition(wrapped)).unwrap(),
+                    );
                 }
                 Ok(())
-            },
-            Entry::SignalDescription ( wrapped ) => {
+            }
+            Entry::SignalDescription(wrapped) => {
                 if self.spns.contains_key(&wrapped.signal_name) {
                     (*self.spns.get_mut(&wrapped.signal_name).unwrap())
-                        .merge_entry(Entry::SignalDescription(wrapped)).unwrap();
+                        .merge_entry(Entry::SignalDescription(wrapped))
+                        .unwrap();
                 } else {
-                    self.spns.insert(wrapped.signal_name.clone(),
-                                     SpnDefinition::from_entry(Entry::SignalDescription(wrapped)).unwrap());
+                    self.spns.insert(
+                        wrapped.signal_name.clone(),
+                        SpnDefinition::from_entry(Entry::SignalDescription(wrapped)).unwrap(),
+                    );
                 }
                 Ok(())
-            },
-            Entry::SignalAttribute ( wrapped ) => {
+            }
+            Entry::SignalAttribute(wrapped) => {
                 if wrapped.name != "SPN" {
                     // Skip non-SPN attributes
                     return Ok(());
                 }
                 if self.spns.contains_key(&wrapped.signal_name) {
                     (*self.spns.get_mut(&wrapped.signal_name).unwrap())
-                        .merge_entry(Entry::SignalAttribute(wrapped)).unwrap();
+                        .merge_entry(Entry::SignalAttribute(wrapped))
+                        .unwrap();
                 } else {
-                    self.spns.insert(wrapped.signal_name.clone(),
-                                     SpnDefinition::from_entry(Entry::SignalAttribute(wrapped)).unwrap());
+                    self.spns.insert(
+                        wrapped.signal_name.clone(),
+                        SpnDefinition::from_entry(Entry::SignalAttribute(wrapped)).unwrap(),
+                    );
                 }
                 Ok(())
-            },
-            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
+            }
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into()),
         }
     }
 }
@@ -420,48 +498,65 @@ pub struct SpnDefinition {
     offset: f32,
     min_value: f32,
     max_value: f32,
-    units: String
+    units: String,
 }
 
-const SHIFT_BYTE_LOOKUP: [u64; 8] = [ 1, 1<<(1*8), 1<<(2*8), 1<<(3*8), 1<<(4*8), 1<<(5*8), 1<<(6*8), 1<<(7*8) ];
+const SHIFT_BYTE_LOOKUP: [u64; 8] = [
+    1,
+    1 << (1 * 8),
+    1 << (2 * 8),
+    1 << (3 * 8),
+    1 << (4 * 8),
+    1 << (5 * 8),
+    1 << (6 * 8),
+    1 << (7 * 8),
+];
 
 /// Internal function for parsing CAN message arrays given the definition parameters.  This is where
 /// the real calculations happen.
-fn parse_array(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32, offset: f32, msg: &[u8; 8]) -> Option<f32> {
+fn parse_array(
+    bit_len: usize,
+    start_bit: usize,
+    little_endian: bool,
+    scale: f32,
+    offset: f32,
+    msg: &[u8; 8],
+) -> Option<f32> {
     let msg64: u64 = match little_endian {
         true => LittleEndian::read_u64(msg),
-        false => BigEndian::read_u64(msg)
+        false => BigEndian::read_u64(msg),
     };
 
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
 
-    Some(
-        ( ( ( msg64 >> start_bit ) & bit_mask ) as f32 ) * scale + offset
-    )
+    Some((((msg64 >> start_bit) & bit_mask) as f32) * scale + offset)
 }
 
 /// Internal function for parsing CAN message slices given the definition parameters.  This is where
 /// the real calculations happen.
-fn parse_message(bit_len: usize, start_bit: usize, little_endian: bool, scale: f32, offset: f32, msg: &[u8]) -> Option<f32> {
-
+fn parse_message(
+    bit_len: usize,
+    start_bit: usize,
+    little_endian: bool,
+    scale: f32,
+    offset: f32,
+    msg: &[u8],
+) -> Option<f32> {
     if msg.len() < 8 {
-        return None
+        return None;
     }
     let msg64: u64 = match little_endian {
         true => LittleEndian::read_u64(msg),
-        false => BigEndian::read_u64(msg)
+        false => BigEndian::read_u64(msg),
     };
 
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
 
-    Some(
-        ( ( ( msg64 >> start_bit ) & bit_mask ) as f32 ) * scale + offset
-    )
+    Some((((msg64 >> start_bit) & bit_mask) as f32) * scale + offset)
 }
 
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
 pub trait ParseMessage<N> {
-
     /// Parses CAN message type `N` into generic `f32` signal value on success, or `None`
     /// on failure.
     fn parse_message(&self, msg: N) -> Option<f32>;
@@ -472,21 +567,22 @@ pub trait ParseMessage<N> {
 }
 
 impl SpnDefinition {
-
     /// Return new `SpnDefinition` given the definition parameters.
-    pub fn new(name: String,
-               number: usize,
-               id: String,
-               description: String,
-               start_bit: usize,
-               bit_len: usize,
-               little_endian: bool,
-               signed: bool,
-               scale: f32,
-               offset: f32,
-               min_value: f32,
-               max_value: f32,
-               units: String) -> Self {
+    pub fn new(
+        name: String,
+        number: usize,
+        id: String,
+        description: String,
+        start_bit: usize,
+        bit_len: usize,
+        little_endian: bool,
+        signed: bool,
+        scale: f32,
+        offset: f32,
+        min_value: f32,
+        max_value: f32,
+        units: String,
+    ) -> Self {
         SpnDefinition {
             name: name,
             number: number,
@@ -500,15 +596,21 @@ impl SpnDefinition {
             offset: offset,
             min_value: min_value,
             max_value: max_value,
-            units: units
+            units: units,
         }
     }
 }
 
-impl <'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
-
+impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
     fn parse_message(&self, msg: &[u8; 8]) -> Option<f32> {
-        parse_array(self.bit_len, self.start_bit, self.little_endian, self.scale, self.offset, msg)
+        parse_array(
+            self.bit_len,
+            self.start_bit,
+            self.little_endian,
+            self.scale,
+            self.offset,
+            msg,
+        )
     }
 
     fn parser(&self) -> Box<Fn(&[u8; 8]) -> Option<f32>> {
@@ -518,18 +620,23 @@ impl <'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
         let offset = self.offset;
         let little_endian = self.little_endian;
 
-        let fun = move |msg: &[u8; 8]| {
-            parse_array(bit_len, start_bit, little_endian, scale, offset, msg)
-        };
+        let fun =
+            move |msg: &[u8; 8]| parse_array(bit_len, start_bit, little_endian, scale, offset, msg);
 
         Box::new(fun)
     }
 }
 
-impl <'a> ParseMessage<&'a [u8]> for SpnDefinition {
-
+impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
     fn parse_message(&self, msg: &[u8]) -> Option<f32> {
-        parse_message(self.bit_len, self.start_bit, self.little_endian, self.scale, self.offset, msg)
+        parse_message(
+            self.bit_len,
+            self.start_bit,
+            self.little_endian,
+            self.scale,
+            self.offset,
+            msg,
+        )
     }
 
     fn parser(&self) -> Box<Fn(&[u8]) -> Option<f32>> {
@@ -539,24 +646,28 @@ impl <'a> ParseMessage<&'a [u8]> for SpnDefinition {
         let offset = self.offset;
         let little_endian = self.little_endian;
 
-        let fun = move |msg: &[u8]| {
-            parse_message(bit_len, start_bit, little_endian, scale, offset, msg)
-        };
+        let fun =
+            move |msg: &[u8]| parse_message(bit_len, start_bit, little_endian, scale, offset, msg);
 
         Box::new(fun)
     }
 }
 
 #[cfg(feature = "use-socketcan")]
-impl <'a> ParseMessage<&'a CANFrame> for SpnDefinition {
-
+impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
     fn parse_message(&self, frame: &CANFrame) -> Option<f32> {
         let ref msg = frame.data();
-        parse_message(self.bit_len, self.start_bit, self.little_endian, self.scale, self.offset, msg)
+        parse_message(
+            self.bit_len,
+            self.start_bit,
+            self.little_endian,
+            self.scale,
+            self.offset,
+            msg,
+        )
     }
 
     fn parser(&self) -> Box<Fn(&CANFrame) -> Option<f32>> {
-
         let bit_len = self.bit_len;
         let start_bit = self.start_bit;
         let scale = self.scale;
@@ -577,7 +688,8 @@ impl FromStr for SpnDefinition {
 
     /// `&str` -> `SpnDefinition` via `dbc::Entry` (though probably won't be used).
     fn from_str(line: &str) -> Result<Self, Self::Err>
-        where Self: Sized + FromDbc
+    where
+        Self: Sized + FromDbc,
     {
         Entry::from_str(line)
             .map_err(|e| DefinitionErrorKind::Entry(e).into())
@@ -588,97 +700,202 @@ impl FromStr for SpnDefinition {
 impl FromDbc for SpnDefinition {
     type Err = ParseDefinitionError;
 
-    fn from_entry(entry: Entry) -> Result<Self, Self::Err> where Self: Sized {
+    fn from_entry(entry: Entry) -> Result<Self, Self::Err>
+    where
+        Self: Sized,
+    {
         match entry {
-            Entry::SignalDefinition ( signal_definition ) =>
-                Ok(signal_definition.into()),
-            Entry::SignalDescription ( signal_description ) =>
-                Ok(signal_description.into()),
-            Entry::SignalAttribute ( signal_attribute ) =>
-                Ok(signal_attribute.into()),
-            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
+            Entry::SignalDefinition(signal_definition) => Ok(signal_definition.into()),
+            Entry::SignalDescription(signal_description) => Ok(signal_description.into()),
+            Entry::SignalAttribute(signal_attribute) => Ok(signal_attribute.into()),
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into()),
         }
     }
 
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
-            Entry::SignalDefinition ( SignalDefinition { name, start_bit, bit_len, little_endian, signed, scale, offset, min_value, max_value, units, .. }) => {
-                self.name = name; self.start_bit = start_bit; self.bit_len = bit_len; self.little_endian = little_endian; self.signed = signed; self.scale = scale; self.offset = offset; self.min_value = min_value; self.units = units;
-                Ok(())
-            },
-            Entry::SignalDescription ( SignalDescription {id, signal_name, description }) => {
-                self.name = signal_name; self.id = id; self.description = description;
-                Ok(())
-            },
-            Entry::SignalAttribute ( SignalAttribute { name, id, signal_name, value }) => {
-                self.name = signal_name; self.id = id; self.number = value.parse().unwrap();
+            Entry::SignalDefinition(SignalDefinition {
+                name,
+                start_bit,
+                bit_len,
+                little_endian,
+                signed,
+                scale,
+                offset,
+                min_value,
+                max_value,
+                units,
+                ..
+            }) => {
+                self.name = name;
+                self.start_bit = start_bit;
+                self.bit_len = bit_len;
+                self.little_endian = little_endian;
+                self.signed = signed;
+                self.scale = scale;
+                self.offset = offset;
+                self.min_value = min_value;
+                self.units = units;
                 Ok(())
             }
-            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into())
+            Entry::SignalDescription(SignalDescription {
+                id,
+                signal_name,
+                description,
+            }) => {
+                self.name = signal_name;
+                self.id = id;
+                self.description = description;
+                Ok(())
+            }
+            Entry::SignalAttribute(SignalAttribute {
+                name,
+                id,
+                signal_name,
+                value,
+            }) => {
+                self.name = signal_name;
+                self.id = id;
+                self.number = value.parse().unwrap();
+                Ok(())
+            }
+            _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into()),
         }
     }
-
 }
 
 impl From<SignalDefinition> for SpnDefinition {
-    fn from(SignalDefinition { name, start_bit, bit_len, little_endian, signed, scale, offset, min_value, max_value, units, .. }: SignalDefinition) -> Self {
-        SpnDefinition::new(name, 0, "".to_string(), "".to_string(), start_bit, bit_len, little_endian, signed, scale, offset, min_value, max_value, units)
+    fn from(
+        SignalDefinition {
+            name,
+            start_bit,
+            bit_len,
+            little_endian,
+            signed,
+            scale,
+            offset,
+            min_value,
+            max_value,
+            units,
+            ..
+        }: SignalDefinition,
+    ) -> Self {
+        SpnDefinition::new(
+            name,
+            0,
+            "".to_string(),
+            "".to_string(),
+            start_bit,
+            bit_len,
+            little_endian,
+            signed,
+            scale,
+            offset,
+            min_value,
+            max_value,
+            units,
+        )
     }
 }
 impl From<SignalDescription> for SpnDefinition {
-    fn from(SignalDescription { id, signal_name, description }: SignalDescription) -> Self {
-        SpnDefinition::new(signal_name, 0, id, description, 0, 0, true, false, 0.0, 0.0, 0.0, 0.0, "".to_string() )
+    fn from(
+        SignalDescription {
+            id,
+            signal_name,
+            description,
+        }: SignalDescription,
+    ) -> Self {
+        SpnDefinition::new(
+            signal_name,
+            0,
+            id,
+            description,
+            0,
+            0,
+            true,
+            false,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "".to_string(),
+        )
     }
 }
 impl From<SignalAttribute> for SpnDefinition {
-    fn from(SignalAttribute { name, id, signal_name, value }: SignalAttribute) -> Self {
-        SpnDefinition::new(signal_name, value.parse().unwrap(), id, "".to_string(), 0, 0, true, false, 0.0, 0.0, 0.0, 0.0, "".to_string() )
+    fn from(
+        SignalAttribute {
+            name,
+            id,
+            signal_name,
+            value,
+        }: SignalAttribute,
+    ) -> Self {
+        SpnDefinition::new(
+            signal_name,
+            value.parse().unwrap(),
+            id,
+            "".to_string(),
+            0,
+            0,
+            true,
+            false,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "".to_string(),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use pgn::*;
     use dbc::*;
+    use pgn::*;
 
-    lazy_static!{
-    static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
-
-    static ref PGNLIB_ONE: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc")
-        .expect("Failed to create PgnLibrary from file");
-
-    static ref SPNDEF: SpnDefinition =
-        SpnDefinition::new("Engine_Speed".to_string(), 190, "2364539904".to_string(),
+    lazy_static! {
+        static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
+        static ref PGNLIB_ONE: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc")
+            .expect("Failed to create PgnLibrary from file");
+        static ref SPNDEF: SpnDefinition = SpnDefinition::new(
+            "Engine_Speed".to_string(),
+            190,
+            "2364539904".to_string(),
             "A description for Engine speed.".to_string(),
-            24, 16, true, false, 0.125, 0.0, 0.0, 8031.88, "rpm".to_string()
+            24,
+            16,
+            true,
+            false,
+            0.125,
+            0.0,
+            0.0,
+            8031.88,
+            "rpm".to_string()
         );
-
-    static ref SPNDEF_BE: SpnDefinition = {
-        let mut _spndef = SPNDEF.clone();
-        _spndef.little_endian = false;
-        _spndef
-    };
-
-    static ref MSG: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
-    static ref MSG_BE: [u8; 8] = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11];
-
+        static ref SPNDEF_BE: SpnDefinition = {
+            let mut _spndef = SPNDEF.clone();
+            _spndef.little_endian = false;
+            _spndef
+        };
+        static ref MSG: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
+        static ref MSG_BE: [u8; 8] = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11];
     }
 
     #[test]
     fn default_pgnlibrary() {
-        assert_eq!(
-            PGNLIB_EMPTY.pgns.len(),
-            0
-        );
+        assert_eq!(PGNLIB_EMPTY.pgns.len(), 0);
     }
 
     #[test]
     fn get_spndefinition() {
         assert_eq!(
-            *PGNLIB_ONE.get_pgn(0xF004)
+            *PGNLIB_ONE
+                .get_pgn(0xF004)
                 .expect("failed to get PgnDefinition from PgnLibrary")
-                .spns.get("Engine_Speed")
+                .spns
+                .get("Engine_Speed")
                 .expect("failed to get SpnDefinition from PgnDefinition"),
             *SPNDEF
         );
@@ -695,10 +912,7 @@ mod tests {
 
     #[test]
     fn test_parse_array() {
-        assert_eq!(
-            SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(),
-            2728.5
-        );
+        assert_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5);
         assert_eq!(
             SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
             2728.5
@@ -707,30 +921,17 @@ mod tests {
 
     #[test]
     fn test_parse_message() {
-        assert_eq!(
-            SPNDEF.parse_message(&MSG[..]).unwrap(),
-            2728.5
-        );
-        assert_eq!(
-            SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(),
-            2728.5
-        );
+        assert_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
+        assert_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
         assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
         assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
     }
 
     #[test]
     fn parse_message_closure() {
-        assert_eq!(
-            SPNDEF.parser()(&MSG[..]).unwrap(),
-            2728.5
-        );
-        assert_eq!(
-            SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(),
-            2728.5
-        );
+        assert_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
+        assert_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
     }
-
 
     #[cfg(feature = "use-socketcan")]
     mod socketcan {
@@ -740,39 +941,20 @@ mod tests {
 
         use socketcan::CANFrame;
 
-        lazy_static!{
-        static ref FRAME: CANFrame = CANFrame::new(
-            0,
-            &MSG[..],
-            false,
-            false
-        ).unwrap();
-        static ref FRAME_BE: CANFrame = CANFrame::new(
-            0,
-            &MSG_BE[..],
-            false,
-            false
-        ).unwrap();
+        lazy_static! {
+            static ref FRAME: CANFrame = CANFrame::new(0, &MSG[..], false, false).unwrap();
+            static ref FRAME_BE: CANFrame = CANFrame::new(0, &MSG_BE[..], false, false).unwrap();
         }
 
         #[test]
         fn parse_canframe_closure() {
-            assert_eq!(
-                SPNDEF.parser()(&FRAME as &CANFrame).unwrap(),
-                2728.5
-            );
-            assert_eq!(
-                SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(),
-                2728.5
-            );
+            assert_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
         }
 
         #[test]
         fn test_parse_canframe() {
-            assert_eq!(
-                SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(),
-                2728.5
-            );
+            assert_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
             assert_eq!(
                 SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
@@ -781,4 +963,3 @@ mod tests {
 
     }
 }
-
