@@ -375,6 +375,10 @@ impl FromDbc for PgnDefinition {
                 Ok(())
             },
             Entry::SignalAttribute ( wrapped ) => {
+                if wrapped.name != "SPN" {
+                    // Skip non-SPN attributes
+                    return Ok(());
+                }
                 if self.spns.contains_key(&wrapped.signal_name) {
                     (*self.spns.get_mut(&wrapped.signal_name).unwrap())
                         .merge_entry(Entry::SignalAttribute(wrapped)).unwrap();
