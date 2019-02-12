@@ -35,20 +35,22 @@
 //! ```
 
 #![cfg_attr(feature = "cargo-clippy", allow(redundant_field_names))]
-
 #![allow(non_snake_case, non_camel_case_types)]
 #![allow(unused_variables, dead_code)]
 #![allow(unused_imports, unused_mut)]
 #![allow(plugin_as_library)]
-
 #![crate_name = "canparse"]
 
 extern crate encoding;
-#[macro_use] extern crate enum_primitive;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate enum_primitive;
+#[macro_use]
+extern crate lazy_static;
+extern crate byteorder;
 extern crate regex;
 extern crate rustc_serialize;
-extern crate byteorder;
+#[macro_use]
+extern crate nom;
 
 #[cfg(feature = "use-socketcan")]
 extern crate socketcan;
