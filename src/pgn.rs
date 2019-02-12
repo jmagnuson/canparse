@@ -14,8 +14,9 @@ use std::path::Path;
 use std::fmt::{Display, Formatter};
 use std::fmt;
 use std::fs::File;
-use dbc::*;
+use dbc::{nom as nomparse, *};
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
+use nom;
 
 #[cfg(feature = "use-socketcan")]
 use socketcan::CANFrame;
@@ -104,10 +105,21 @@ impl PgnLibrary {
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
             })?;
 
-        for (idx, line) in data.lines().enumerate() {
-            if let Ok(entry) = Entry::from_str(line) {
-                if let Err(_e) = lib.add_entry(entry) {
-                    // TODO: Handle add_entry error
+        let mut i = data.as_str();
+        while i.len() > 0 {
+            match nomparse::entry(i) {
+                Ok((new_i, entry)) => {
+                    if let Err(_e) = lib.add_entry(entry) {
+                        // TODO: Handle add_entry error
+                    }
+                    i = new_i;
+                },
+                // FIXME: handling `IResult::Err`s could be better
+                Err(nom::Err::Incomplete(_)) => {
+                    break;
+                },
+                Err(_) => {
+                    i = &i[1..];
                 }
             }
         }

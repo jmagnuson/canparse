@@ -1,24 +1,10 @@
-
 extern crate canparse;
 
-use canparse::dbc::Entry;
 use canparse::pgn::{PgnLibrary, SpnDefinition, ParseMessage};
-use std::str::FromStr;
-use std::collections::HashMap;
 
 #[test]
 fn pgnlib_build_parse() {
-    let mut lib = PgnLibrary::new( HashMap::default() );
-
-    let data: String = include_bytes!("./data/sample.dbc")
-        .iter().map(|b| *b as char).collect();
-
-    // Parse db lines into PgnLibrary
-    for line in data.lines() {
-        if let Ok(entry) = Entry::from_str(&line) {
-            lib.add_entry(entry).ok();
-        }
-    }
+    let lib = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
 
     // Pull signal definition for engine speed
     let enginespeed_def: &SpnDefinition = lib
