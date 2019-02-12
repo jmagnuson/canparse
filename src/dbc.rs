@@ -112,6 +112,7 @@ pub enum Entry {
     // `BA_ "[attribute name]" [BU_|BO_|SG_] [node|can id] [signal name] [attribute value];`
     // Attribute
 
+    Unknown(String),
 }
 
 impl Entry {
@@ -127,6 +128,7 @@ impl Entry {
             Entry::SignalDefinition(_) => EntryType::SignalDefinition,
             Entry::SignalDescription(_) => EntryType::SignalDescription,
             Entry::SignalAttribute(_) => EntryType::SignalAttribute,
+            Entry::Unknown(_) => EntryType::Unknown,
         }
     }
 }
@@ -160,6 +162,8 @@ pub enum EntryType {
     // AttributeDefinition,
     // AttributeDefault,
     // Attribute
+
+    Unknown,
 }
 }
 
@@ -174,6 +178,8 @@ impl Display for EntryType {
             EntryType::SignalDefinition => "SignalDefinition",
             EntryType::SignalDescription => "SignalDescription",
             EntryType::SignalAttribute => "SignalAttribute",
+
+            EntryType::Unknown => "Unknown",
         };
         write!(f, "{}", entry_str)
     }
@@ -210,8 +216,18 @@ pub mod nom {
         message_attribute      => { |r| Entry::MessageAttribute(r) } |
         signal_definition      => { |r| Entry::SignalDefinition(r) } |
         signal_description     => { |r| Entry::SignalDescription(r) } |
-        signal_attribute       => { |r| Entry::SignalAttribute(r) }
+        signal_attribute       => { |r| Entry::SignalAttribute(r) } |
+        unknown                => { |r| Entry::Unknown(r) }
     ));
+
+    named!(pub unknown<&str, String>,
+        do_parse!(
+            // FIXME: many0!(quoted_str) >> line_ending
+            data: take_until_either!("\r\n") >>
+            line_ending >>
+            ( data.to_string() )
+        )
+    );
 
     named!(pub version<&str, Version>,
         do_parse!(
@@ -634,6 +650,9 @@ impl FromStr for Entry {
                     })
                 })
             },
+            EntryType::Unknown => {
+                unreachable!()
+            }
         };
 
         if let Some(_entry) = entry {
