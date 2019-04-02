@@ -257,9 +257,8 @@ impl FromDbc for Signal {
 /// with CAN messages and signals.
 #[derive(Clone, Debug, Default)]
 pub struct DbcLibrary {
-    last_id: Option<String>, //u32,
-    // FIXME: <u32, Message> ?
-    messages: HashMap<String, Message>,
+    last_id: Option<u32>,
+    messages: HashMap<u32, Message>,
 }
 
 use std::fs::File;
@@ -273,7 +272,7 @@ use nom;
 
 impl DbcLibrary {
     /// Creates a new `DbcLibrary` instance given an existing lookup table.
-    pub fn new(messages: HashMap<String, Message>) -> Self {
+    pub fn new(messages: HashMap<u32, Message>) -> Self {
         DbcLibrary {
             last_id: None,
             messages,
@@ -343,7 +342,7 @@ impl DbcLibrary {
 
 impl DbcLibrary {
     pub fn add_entry(&mut self, entry: Entry) -> Result<(), String> {
-        let _id: String = match entry {
+        let _id: u32 = *match entry {
             Entry::MessageDefinition(dbc::MessageDefinition { ref id, .. }) => id,
             Entry::MessageDescription(dbc::MessageDescription { ref id, .. }) => id,
             Entry::MessageAttribute(dbc::MessageAttribute { ref id, .. }) => id,
@@ -360,9 +359,9 @@ impl DbcLibrary {
             _ => {
                 return Err(format!("Unsupported entry: {}.", entry).to_string());
             }
-        }.clone();
+        };
 
-        self.messages.entry(_id.clone())
+        self.messages.entry(_id)
             .and_modify(|cur_entry| cur_entry.merge_entry(entry.clone())
                 .unwrap_or_else(|_| panic!("Already checked for Signal key: {:?}", entry))
             ).or_insert_with(|| Message::from_entry(entry.clone())
@@ -415,7 +414,7 @@ mod tests {
         assert_eq!(
             *DBCLIB_ONE
                 .messages
-                .get("2364539904")
+                .get(&2364539904)
                 .expect("failed to get DbcDefinition from DbcLibrary")
                 .signals
                 .get("Engine_Speed")

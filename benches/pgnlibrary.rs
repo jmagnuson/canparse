@@ -16,7 +16,7 @@ use socketcan::CANFrame;
 lazy_static!{
 
 static ref SPNDEF: SpnDefinition =
-    SpnDefinition::new("Engine_Speed".to_string(), 190, "2364539904".to_string(),
+    SpnDefinition::new("Engine_Speed".to_string(), 190, 2364539904,
         "A description for Engine speed.".to_string(),
         24, 16, true, false, 0.125, 0.0, 0.0, 8031.88, "rpm".to_string()
     );

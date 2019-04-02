@@ -24,7 +24,7 @@ pub struct BusConfiguration(pub f32);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDefinition {
-    pub id: String,
+    pub id: u32,
     pub name: String,
     pub message_len: u32,
     pub sending_node: String,
@@ -32,7 +32,7 @@ pub struct MessageDefinition {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDescription {
-    pub id: String,
+    pub id: u32,
     // TODO: Remove this
     pub signal_name: String,
     pub description: String,
@@ -41,7 +41,7 @@ pub struct MessageDescription {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageAttribute {
     pub name: String,
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub value: String,
 }
@@ -63,7 +63,7 @@ pub struct SignalDefinition {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignalDescription {
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub description: String,
 }
@@ -71,7 +71,7 @@ pub struct SignalDescription {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignalAttribute {
     pub name: String,
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub value: String,
 }
@@ -368,7 +368,7 @@ mod tests {
         MessageDefinition,
         "BO_ 2364539904 EEC1 : 8 Vector__XXX\n",
         MessageDefinition {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             name: "EEC1".to_string(),
             message_len: 8,
             sending_node: "Vector__XXX".to_string()
@@ -380,7 +380,7 @@ mod tests {
         MessageDescription,
         "CM_ BO_ 2364539904 \"Engine Controller\";\n",
         MessageDescription {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "".to_string(),
             description: "Engine Controller".to_string()
         }
@@ -393,7 +393,7 @@ mod tests {
         MessageAttribute {
             name: "SingleFrame".to_string(),
             signal_name: "".to_string(),
-            id: "2364539904".to_string(),
+            id: 2364539904,
             value: "0".to_string()
         }
     );
@@ -422,7 +422,7 @@ mod tests {
         SignalDescription,
         "CM_ SG_ 2364539904 Engine_Speed \"A description for Engine speed.\";\n",
         SignalDescription {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
             description: "A description for Engine speed.".to_string()
         }
@@ -434,7 +434,7 @@ mod tests {
         "BA_ \"SPN\" SG_ 2364539904 Engine_Speed 190;\n",
         SignalAttribute {
             name: "SPN".to_string(),
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
             value: "190".to_string()
         }
@@ -448,7 +448,7 @@ mod tests {
              \r \
              line description for Engine torque.\";\n",
             SignalDescription {
-                id: "2364539904".to_string(),
+                id: 2364539904,
                 signal_name: "Actual_Engine___Percent_Torque_High_Resolution".to_string(),
                 description: "A multi- \r \
                               \r \

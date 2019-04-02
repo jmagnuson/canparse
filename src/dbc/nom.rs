@@ -70,7 +70,9 @@ named!(pub message_definition<&str, MessageDefinition>,
     do_parse!(
         tag!("BO_")   >>
         space >>
-        id: digit >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         space >>
         name: alphanumeric >>
         space0 >>
@@ -84,7 +86,7 @@ named!(pub message_definition<&str, MessageDefinition>,
         space0 >>
         line_ending >>
         ( MessageDefinition {
-            id: id.to_string(),
+            id: id,
             name: name.to_string(),
             message_len: len,
             sending_node: sending_node.to_string(),
@@ -98,13 +100,15 @@ named!(pub message_description<&str, MessageDescription>,
         space >>
         tag!("BO_")   >>
         space >>
-        id: digit >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         space >>
         description: quoted_str >>
         tag!(";") >>
         line_ending >>
         ( MessageDescription {
-            id: id.to_string(),
+            id: id,
             signal_name: "".to_string(),
             description: description.to_string(),
         } )
@@ -119,7 +123,9 @@ named!(pub message_attribute<&str, MessageAttribute>,
         space >>
         tag!("BO_")   >>
         space >>
-        id: digit >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         space >>
         value: digit >>
         tag!(";") >>
@@ -127,7 +133,7 @@ named!(pub message_attribute<&str, MessageAttribute>,
         ( MessageAttribute {
             name: name.to_string(),
             signal_name: "".to_string(),
-            id: id.to_string(),
+            id: id,
             value: value.to_string()
         } )
     )
@@ -193,7 +199,9 @@ named!(pub signal_description<&str, SignalDescription>,
         space >>
         tag!("SG_")   >>
         space >>
-        id: digit >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         space >>
         signal_name: take_until_either!(" \t") >>
         space >>
@@ -201,7 +209,7 @@ named!(pub signal_description<&str, SignalDescription>,
         tag!(";") >>
         line_ending >>
         ( SignalDescription {
-            id: id.to_string(),
+            id: id,
             signal_name: signal_name.to_string(),
             description: description.to_string()
         } )
@@ -216,7 +224,9 @@ named!(pub signal_attribute<&str, SignalAttribute>,
         space >>
         tag!("SG_")   >>
         space >>
-        id: digit >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         space >>
         signal_name: take_until_either!(" \t") >>
         space >>
@@ -225,7 +235,7 @@ named!(pub signal_attribute<&str, SignalAttribute>,
         line_ending >>
         ( SignalAttribute {
             name: name.to_string(),
-            id: id.to_string(),
+            id: id,
             signal_name: signal_name.to_string(),
             value: value.to_string()
         } )

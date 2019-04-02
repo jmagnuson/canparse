@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 ### Changed
 - Update and clean out old deps
 - Replace regex parsing with `nom` to handle strings with newlines
+- Convert message/PGN ID from `String` to `u32`
 
 ## [0.1.3] - 2018-02-09
 
