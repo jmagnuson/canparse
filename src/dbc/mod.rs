@@ -2,10 +2,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use enum_primitive::FromPrimitive;
-use regex::{Regex, RegexSet};
-use rustc_serialize::{Decodable, Decoder};
-use std;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};

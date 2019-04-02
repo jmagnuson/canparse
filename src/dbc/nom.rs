@@ -1,7 +1,7 @@
 //! Nom-based parsers for Entry types
 
 use super::*;
-use nom::{alphanumeric, anychar, digit, float, line_ending, space, space0};
+use nom::{alphanumeric, digit, float, line_ending, space, space0};
 use std::str::FromStr;
 
 // TODO: convert `tag!(" ")` to `space`
