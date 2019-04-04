@@ -5,7 +5,6 @@ use dbc::{nom as nomparse, *};
 use encoding::all::ISO_8859_1;
 use encoding::{CodecError, DecoderTrap, Encoding};
 use nom;
-use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
@@ -13,7 +12,6 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::io::BufReader;
 use std::marker::Sized;
 use std::path::Path;
 use std::str::FromStr;
@@ -158,24 +156,23 @@ impl PgnLibrary {
     /// }
     /// ```
     pub fn add_entry(&mut self, entry: Entry) -> Result<(), String> {
-        let _id: u32 = match entry {
-            Entry::MessageDefinition(MessageDefinition { ref id, .. }) => id.parse(),
-            Entry::MessageDescription(MessageDescription { ref id, .. }) => id.parse(),
-            Entry::MessageAttribute(MessageAttribute { ref id, .. }) => id.parse(),
+        let _id: u32 = *match entry {
+            Entry::MessageDefinition(MessageDefinition { ref id, .. }) => id,
+            Entry::MessageDescription(MessageDescription { ref id, .. }) => id,
+            Entry::MessageAttribute(MessageAttribute { ref id, .. }) => id,
             Entry::SignalDefinition(..) => {
                 // no id, and by definition must follow MessageDefinition
                 if self.last_id == 0 {
                     return Err("Tried to add SignalDefinition without last ID.".to_string());
                 }
-                Ok(self.last_id)
+                &self.last_id
             }
-            Entry::SignalDescription(SignalDescription { ref id, .. }) => id.parse(),
-            Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id.parse(),
+            Entry::SignalDescription(SignalDescription { ref id, .. }) => id,
+            Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id,
             _ => {
                 return Err(format!("Unsupported entry: {}.", entry).to_string());
             }
-        }
-        .unwrap();
+        };
 
         // CanId{ DP, PF, PS, SA } => Pgn{ PF, PS }
         let pgn = (_id >> 8) & 0x1FFFF;
@@ -348,7 +345,7 @@ impl FromDbc for PgnDefinition {
                 message_len,
                 sending_node,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
                     pgn,
@@ -364,7 +361,7 @@ impl FromDbc for PgnDefinition {
                 signal_name,
                 description,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
                     pgn,
@@ -381,7 +378,7 @@ impl FromDbc for PgnDefinition {
                 id,
                 value,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
                     pgn,
@@ -404,7 +401,7 @@ impl FromDbc for PgnDefinition {
                 message_len,
                 sending_node,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 self.pgn = pgn;
                 self.pgn_long = pgn_long;
@@ -416,7 +413,7 @@ impl FromDbc for PgnDefinition {
                 signal_name,
                 description,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 self.pgn = pgn;
                 self.pgn_long = pgn_long;
@@ -429,7 +426,7 @@ impl FromDbc for PgnDefinition {
                 id,
                 value,
             }) => {
-                let pgn_long = id.parse::<u32>().unwrap();
+                let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 self.pgn = pgn;
                 self.pgn_long = pgn_long;
@@ -488,7 +485,7 @@ impl FromDbc for PgnDefinition {
 pub struct SpnDefinition {
     name: String,
     pub number: usize,
-    id: String,
+    id: u32,
     description: String,
     start_bit: usize,
     bit_len: usize,
@@ -571,7 +568,7 @@ impl SpnDefinition {
     pub fn new(
         name: String,
         number: usize,
-        id: String,
+        id: u32,
         description: String,
         start_bit: usize,
         bit_len: usize,
@@ -783,7 +780,7 @@ impl From<SignalDefinition> for SpnDefinition {
         SpnDefinition::new(
             name,
             0,
-            "".to_string(),
+            0, // TODO: Some()?
             "".to_string(),
             start_bit,
             bit_len,
@@ -862,7 +859,7 @@ mod tests {
         static ref SPNDEF: SpnDefinition = SpnDefinition::new(
             "Engine_Speed".to_string(),
             190,
-            "2364539904".to_string(),
+            2364539904,
             "A description for Engine speed.".to_string(),
             24,
             16,

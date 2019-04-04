@@ -2,45 +2,47 @@
 
 #![allow(non_upper_case_globals)]
 
-use enum_primitive::FromPrimitive;
-use regex::{Regex, RegexSet};
-use rustc_serialize::{Decodable, Decoder};
-use std;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Clone)]
+pub mod library;
+pub mod nom;
+
+pub use self::library::DbcLibrary;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Version(pub String);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BusConfiguration(pub f32);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDefinition {
-    pub id: String,
+    pub id: u32,
     pub name: String,
     pub message_len: u32,
     pub sending_node: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDescription {
-    pub id: String,
+    pub id: u32,
+    // TODO: Remove this
     pub signal_name: String,
     pub description: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageAttribute {
     pub name: String,
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub value: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SignalDefinition {
     pub name: String,
     pub start_bit: usize,
@@ -55,23 +57,23 @@ pub struct SignalDefinition {
     pub receiving_node: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignalDescription {
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub description: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignalAttribute {
     pub name: String,
-    pub id: String,
+    pub id: u32,
     pub signal_name: String,
     pub value: String,
 }
 
 /// Composed DBC entry.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Entry {
     /// `VERSION`
     Version(Version),
@@ -138,7 +140,7 @@ impl Display for Entry {
 
 /// Internal type for DBC `Entry` line.
 enum_from_primitive! {
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum EntryType {
     Version = 0,
 
@@ -151,10 +153,12 @@ pub enum EntryType {
     MessageDefinition,
     MessageDescription,
     MessageAttribute,
+//    MessageAttributeDefinition,
 
     SignalDefinition,
     SignalDescription,
     SignalAttribute,
+//    SignalAttributeDefinition,
 
     // AttributeDefinition,
     // AttributeDefault,
@@ -182,242 +186,8 @@ impl Display for EntryType {
     }
 }
 
-pub mod nom {
-    use super::*;
-    use nom::{alphanumeric, anychar, digit, float, line_ending, space, space0};
-    use std::str::FromStr;
-
-    // TODO: convert `tag!(" ")` to `space`
-
-    named! {
-        quoted_str<&str, String>,
-        map!(
-            delimited!(
-                tag!("\""),
-                escaped_transform!(
-                    none_of!("\\\""),
-                    '\\',
-                    alt!(
-                        tag!("\\") => { |_| "\\" }
-                      | tag!("\"") => { |_| "\"" }
-                    )),
-                tag!("\"")),
-            |data| data)
-    }
-
-    named!(pub entry<&str, Entry>, alt!(
-        version                => { |r| Entry::Version(r) } |
-        bus_configuration      => { |r| Entry::BusConfiguration(r) } |
-        message_definition     => { |r| Entry::MessageDefinition(r) } |
-        message_description    => { |r| Entry::MessageDescription(r) } |
-        message_attribute      => { |r| Entry::MessageAttribute(r) } |
-        signal_definition      => { |r| Entry::SignalDefinition(r) } |
-        signal_description     => { |r| Entry::SignalDescription(r) } |
-        signal_attribute       => { |r| Entry::SignalAttribute(r) } |
-        unknown                => { |r| Entry::Unknown(r) }
-    ));
-
-    named!(pub unknown<&str, String>,
-        do_parse!(
-            // FIXME: many0!(quoted_str) >> line_ending
-            data: take_until_either!("\r\n") >>
-            line_ending >>
-            ( data.to_string() )
-        )
-    );
-
-    named!(pub version<&str, Version>,
-        do_parse!(
-            tag!("VERSION")   >>
-            tag!(" ")   >>
-            data: quoted_str >>
-            line_ending >>
-            ( Version(data) )
-        )
-    );
-
-    named!(pub bus_configuration<&str, BusConfiguration>,
-        do_parse!(
-            tag!("BS_:")   >>
-            tag!(" ")   >>
-            data: map_res!(
-                take_until_either!("\r\n"),
-                FromStr::from_str) >>
-            line_ending >>
-            ( BusConfiguration(data) )
-        )
-    );
-
-    // FIXME: `space` isn't really correct since there should only be ONE (probably need alt)
-    named!(pub message_definition<&str, MessageDefinition>,
-        do_parse!(
-            tag!("BO_")   >>
-            space >>
-            id: digit >>
-            space >>
-            name: alphanumeric >>
-            space0 >>
-            tag!(":")   >>
-            space >>
-            len: map_res!(
-                digit,
-                FromStr::from_str) >>
-            space >>
-            sending_node: take_until_either!(" \t\r\n") >>
-            space0 >>
-            line_ending >>
-            ( MessageDefinition {
-                id: id.to_string(),
-                name: name.to_string(),
-                message_len: len,
-                sending_node: sending_node.to_string(),
-            } )
-        )
-    );
-
-    named!(pub message_description<&str, MessageDescription>,
-        do_parse!(
-            tag!("CM_")   >>
-            space >>
-            tag!("BO_")   >>
-            space >>
-            id: digit >>
-            space >>
-            description: quoted_str >>
-            tag!(";") >>
-            line_ending >>
-            ( MessageDescription {
-                id: id.to_string(),
-                signal_name: "".to_string(),
-                description: description.to_string(),
-            } )
-        )
-    );
-
-    named!(pub message_attribute<&str, MessageAttribute>,
-        do_parse!(
-            tag!("BA_")   >>
-            space >>
-            name: quoted_str >>
-            space >>
-            tag!("BO_")   >>
-            space >>
-            id: digit >>
-            space >>
-            value: digit >>
-            tag!(";") >>
-            line_ending >>
-            ( MessageAttribute {
-                name: name.to_string(),
-                signal_name: "".to_string(),
-                id: id.to_string(),
-                value: value.to_string()
-            } )
-        )
-    );
-
-    named!(pub signal_definition<&str, SignalDefinition>,
-        do_parse!(
-            space >>
-            tag!("SG_") >>
-            space >>
-            name: take_until_either!(" \t") >>
-            space >>
-            tag!(":") >>
-            space >>
-            start_bit: map_res!(
-                digit,
-                FromStr::from_str) >>
-            tag!("|") >>
-            bit_len: map_res!(
-                digit,
-                FromStr::from_str) >>
-            tag!("@") >>
-            little_endian: map!(digit, |d| d == "1") >>
-            signed: alt!(
-                tag!("+") => { |_| false } |
-                tag!("-") => { |_| true } ) >>
-            space >>
-            tag!("(") >>
-            scale: float >>
-            tag!(",") >>
-            offset: float >>
-            tag!(")") >>
-            space >>
-            tag!("[") >>
-            min_value: float >>
-            tag!("|") >>
-            max_value: float >>
-            tag!("]") >>
-            space >>
-            units: quoted_str >>
-            space >>
-            receiving_node: take_until_either!(" \t\r\n") >>
-            line_ending >>
-            ( SignalDefinition {
-                name: name.to_string(),
-                start_bit: start_bit,
-                bit_len: bit_len,
-                little_endian: little_endian,
-                signed: signed,
-                scale: scale,
-                offset: offset,
-                min_value: min_value,
-                max_value: max_value,
-                units: units.to_string(),
-                receiving_node: receiving_node.to_string(),
-            } )
-        )
-    );
-
-    named!(pub signal_description<&str, SignalDescription>,
-        do_parse!(
-            tag!("CM_")   >>
-            space >>
-            tag!("SG_")   >>
-            space >>
-            id: digit >>
-            space >>
-            signal_name: take_until_either!(" \t") >>
-            space >>
-            description: quoted_str >>
-            tag!(";") >>
-            line_ending >>
-            ( SignalDescription {
-                id: id.to_string(),
-                signal_name: signal_name.to_string(),
-                description: description.to_string()
-            } )
-        )
-    );
-
-    named!(pub signal_attribute<&str, SignalAttribute>,
-        do_parse!(
-            tag!("BA_")   >>
-            space >>
-            name: quoted_str >>
-            space >>
-            tag!("SG_")   >>
-            space >>
-            id: digit >>
-            space >>
-            signal_name: take_until_either!(" \t") >>
-            space >>
-            value: digit >>
-            tag!(";") >>
-            line_ending >>
-            ( SignalAttribute {
-                name: name.to_string(),
-                id: id.to_string(),
-                signal_name: signal_name.to_string(),
-                value: value.to_string()
-            } )
-        )
-    );
-}
-
 /// Error returned on failure to parse DBC `Entry`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ParseEntryError {
     kind: EntryErrorKind,
 }
@@ -451,7 +221,7 @@ impl Error for ParseEntryError {
 }
 
 /// Internal type DBC `Entry` parsing error.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 enum EntryErrorKind {
     /// Could not find a regex match for input
     RegexNoMatch,
@@ -503,6 +273,30 @@ impl FromStr for Entry {
             .map_err(|_e| EntryErrorKind::RegexNoMatch.into())
             .map(|(_i, entry)| entry)
     }
+}
+
+/// Probably some spec to determine a type when generating structs
+/// Here an enum will be dispatched instead (e.g., VAL_)
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ValueDefinition {
+    values: Vec<String>,
+}
+
+pub enum AttributeType {
+    /// Integer type with min/max values
+    Int {
+        min: i32,
+        max: i32,
+    },
+    /// Float type with min/max values
+    Float {
+        min: f32,
+        max: f32,
+    },
+    /// String type
+    String,
+    /// Enum type, represented as a vector of `String`s
+    Enum(Vec<String>),
 }
 
 #[cfg(test)]
@@ -570,7 +364,7 @@ mod tests {
         MessageDefinition,
         "BO_ 2364539904 EEC1 : 8 Vector__XXX\n",
         MessageDefinition {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             name: "EEC1".to_string(),
             message_len: 8,
             sending_node: "Vector__XXX".to_string()
@@ -582,7 +376,7 @@ mod tests {
         MessageDescription,
         "CM_ BO_ 2364539904 \"Engine Controller\";\n",
         MessageDescription {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "".to_string(),
             description: "Engine Controller".to_string()
         }
@@ -595,7 +389,7 @@ mod tests {
         MessageAttribute {
             name: "SingleFrame".to_string(),
             signal_name: "".to_string(),
-            id: "2364539904".to_string(),
+            id: 2364539904,
             value: "0".to_string()
         }
     );
@@ -624,7 +418,7 @@ mod tests {
         SignalDescription,
         "CM_ SG_ 2364539904 Engine_Speed \"A description for Engine speed.\";\n",
         SignalDescription {
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
             description: "A description for Engine speed.".to_string()
         }
@@ -636,7 +430,7 @@ mod tests {
         "BA_ \"SPN\" SG_ 2364539904 Engine_Speed 190;\n",
         SignalAttribute {
             name: "SPN".to_string(),
-            id: "2364539904".to_string(),
+            id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
             value: "190".to_string()
         }
@@ -650,7 +444,7 @@ mod tests {
              \r \
              line description for Engine torque.\";\n",
             SignalDescription {
-                id: "2364539904".to_string(),
+                id: 2364539904,
                 signal_name: "Actual_Engine___Percent_Torque_High_Resolution".to_string(),
                 description: "A multi- \r \
                               \r \

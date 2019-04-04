@@ -34,11 +34,7 @@
 //! }
 //! ```
 
-#![cfg_attr(feature = "cargo-clippy", allow(redundant_field_names))]
-#![allow(non_snake_case, non_camel_case_types)]
-#![allow(unused_variables, dead_code)]
-#![allow(unused_imports, unused_mut)]
-#![allow(plugin_as_library)]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::redundant_field_names))]
 #![crate_name = "canparse"]
 
 extern crate encoding;
