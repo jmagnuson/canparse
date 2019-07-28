@@ -1,8 +1,13 @@
 language: rust
+sudo: required
+dist: trusty
 rust:
   - stable
   - beta
   - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
 
 script:
   - cargo build --verbose --no-default-features
@@ -13,6 +18,7 @@ script:
 addons:
   apt:
     packages:
+      - libssl-dev
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
@@ -21,23 +27,13 @@ addons:
       - binutils-dev
       - libiberty-dev
 
-after_success:
-  # Coverage report
-  - |
-      if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_RUST_VERSION" == "stable" ]]; then
-        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-        tar xzf master.tar.gz &&
-        cd kcov-master &&
-        mkdir build &&
-        cd build &&
-        cmake .. &&
-        make &&
-        sudo make install &&
-        cd ../.. &&
-        rm -rf kcov-master &&
-        for file in target/debug/canparse-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
-        for file in target/debug/pgnlibrary-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
-        bash <(curl -s https://codecov.io/bash) &&
-        echo "Uploaded code coverage"
-      fi
+before_cache: |
+  if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+    cargo install cargo-tarpaulin -f
+  fi
 
+after_success: |
+  if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+    cargo tarpaulin -i -v --all-features --out Xml
+    bash <(curl -s https://codecov.io/bash)
+  fi
