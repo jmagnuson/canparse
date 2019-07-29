@@ -40,11 +40,10 @@
 extern crate encoding;
 #[macro_use]
 extern crate enum_primitive;
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 extern crate byteorder;
-extern crate regex;
-extern crate rustc_serialize;
 #[macro_use]
 extern crate nom;
 

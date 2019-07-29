@@ -54,7 +54,6 @@ impl FromDbc for Message {
 
     fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err> where
         Self: Sized {
-        use dbc::Entry;
 
         match entry {
             Entry::MessageDefinition(dbc::MessageDefinition {
@@ -100,7 +99,6 @@ impl FromDbc for Message {
     }
 
     fn merge_entry(&mut self, entry: dbc::Entry) -> Result<(), Self::Err> {
-        use dbc::Entry;
 
         match entry {
             Entry::MessageDefinition(
@@ -179,7 +177,6 @@ impl FromDbc for Signal {
 
     fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err> where
         Self: Sized {
-        use dbc::Entry;
         match entry {
             Entry::SignalDefinition(definition) => {
                 Ok(Signal {
@@ -222,7 +219,6 @@ impl FromDbc for Signal {
     }
 
     fn merge_entry(&mut self, entry: dbc::Entry) -> Result<(), Self::Err> {
-        use dbc::Entry;
         match entry {
             Entry::SignalDefinition(definition) => {
                 self.definition = Some(definition);
@@ -311,7 +307,7 @@ impl DbcLibrary {
                 let mut contents: Vec<u8> = Vec::new();
                 f.read_to_end(&mut contents).map(|_bytes_read| contents)
             })
-            .and_then(|mut contents| {
+            .and_then(|contents| {
                 encoding
                     .decode(contents.as_slice(), DecoderTrap::Replace)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))

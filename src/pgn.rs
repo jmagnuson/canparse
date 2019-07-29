@@ -1,9 +1,11 @@
 //! Signal processing using PGN/SPN definitions.
 
+#![allow(clippy::trivially_copy_pass_by_ref, clippy::too_many_arguments)]
+
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use dbc::{nom as nomparse, *};
 use encoding::all::ISO_8859_1;
-use encoding::{CodecError, DecoderTrap, Encoding};
+use encoding::{DecoderTrap, Encoding};
 use nom;
 use std::collections::HashMap;
 use std::error::Error;
@@ -101,14 +103,14 @@ impl PgnLibrary {
                 let mut contents: Vec<u8> = Vec::new();
                 f.read_to_end(&mut contents).map(|_bytes_read| contents)
             })
-            .and_then(|mut contents| {
+            .and_then(|contents| {
                 encoding
                     .decode(contents.as_slice(), DecoderTrap::Replace)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
             })?;
 
         let mut i = data.as_str();
-        while i.len() > 0 {
+        while !i.is_empty() {
             match nomparse::entry(i) {
                 Ok((new_i, entry)) => {
                     if let Err(_e) = lib.add_entry(entry) {
@@ -156,6 +158,8 @@ impl PgnLibrary {
     /// }
     /// ```
     pub fn add_entry(&mut self, entry: Entry) -> Result<(), String> {
+        use std::collections::hash_map::Entry as HashMapEntry;
+
         let _id: u32 = *match entry {
             Entry::MessageDefinition(MessageDefinition { ref id, .. }) => id,
             Entry::MessageDescription(MessageDescription { ref id, .. }) => id,
@@ -178,14 +182,15 @@ impl PgnLibrary {
         let pgn = (_id >> 8) & 0x1FFFF;
 
         self.last_id = _id;
-        if self.pgns.contains_key(&pgn) {
-            (*self.pgns.get_mut(&pgn).unwrap())
-                .merge_entry(entry)
-                .unwrap();
-        } else {
-            self.pgns
-                .insert(pgn, PgnDefinition::from_entry(entry).unwrap());
+        match self.pgns.entry(pgn) {
+            HashMapEntry::Occupied(mut existing) => {
+                existing.get_mut().merge_entry(entry).unwrap();
+            },
+            HashMapEntry::Vacant(vacant) => {
+                vacant.insert(PgnDefinition::from_entry(entry).unwrap());
+            },
         }
+
         Ok(())
     }
 
@@ -299,7 +304,7 @@ impl DefinitionErrorKind {
     pub fn __cause(&self) -> Option<&Error> {
         match self {
             DefinitionErrorKind::Entry(e) => Some(e),
-            DefinitionErrorKind::UnusedEntry(e) => None,
+            DefinitionErrorKind::UnusedEntry(_e) => None,
         }
     }
 }
@@ -327,7 +332,7 @@ impl FromStr for PgnDefinition {
     {
         Entry::from_str(line)
             .map_err(|e| DefinitionErrorKind::Entry(e).into())
-            .and_then(|entry| Self::from_entry(entry))
+            .and_then(Self::from_entry)
     }
 }
 
@@ -342,8 +347,7 @@ impl FromDbc for PgnDefinition {
             Entry::MessageDefinition(MessageDefinition {
                 id,
                 name,
-                message_len,
-                sending_node,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -358,8 +362,8 @@ impl FromDbc for PgnDefinition {
             }
             Entry::MessageDescription(MessageDescription {
                 id,
-                signal_name,
                 description,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -373,10 +377,8 @@ impl FromDbc for PgnDefinition {
                 ))
             }
             Entry::MessageAttribute(MessageAttribute {
-                name,
-                signal_name,
                 id,
-                value,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -397,9 +399,8 @@ impl FromDbc for PgnDefinition {
         match entry {
             Entry::MessageDefinition(MessageDefinition {
                 id,
-                name,
                 message_len,
-                sending_node,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -410,8 +411,8 @@ impl FromDbc for PgnDefinition {
             }
             Entry::MessageDescription(MessageDescription {
                 id,
-                signal_name,
                 description,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -421,10 +422,8 @@ impl FromDbc for PgnDefinition {
                 Ok(())
             }
             Entry::MessageAttribute(MessageAttribute {
-                name,
-                signal_name,
                 id,
-                value,
+                ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -498,17 +497,6 @@ pub struct SpnDefinition {
     units: String,
 }
 
-const SHIFT_BYTE_LOOKUP: [u64; 8] = [
-    1,
-    1 << (1 * 8),
-    1 << (2 * 8),
-    1 << (3 * 8),
-    1 << (4 * 8),
-    1 << (5 * 8),
-    1 << (6 * 8),
-    1 << (7 * 8),
-];
-
 /// Internal function for parsing CAN message arrays given the definition parameters.  This is where
 /// the real calculations happen.
 fn parse_array(
@@ -519,9 +507,10 @@ fn parse_array(
     offset: f32,
     msg: &[u8; 8],
 ) -> Option<f32> {
-    let msg64: u64 = match little_endian {
-        true => LittleEndian::read_u64(msg),
-        false => BigEndian::read_u64(msg),
+    let msg64: u64 = if little_endian {
+        LittleEndian::read_u64(msg)
+    } else {
+        BigEndian::read_u64(msg)
     };
 
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
@@ -542,9 +531,10 @@ fn parse_message(
     if msg.len() < 8 {
         return None;
     }
-    let msg64: u64 = match little_endian {
-        true => LittleEndian::read_u64(msg),
-        false => BigEndian::read_u64(msg),
+    let msg64: u64 = if little_endian {
+        LittleEndian::read_u64(msg)
+    } else {
+        BigEndian::read_u64(msg)
     };
 
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
@@ -690,7 +680,7 @@ impl FromStr for SpnDefinition {
     {
         Entry::from_str(line)
             .map_err(|e| DefinitionErrorKind::Entry(e).into())
-            .and_then(|entry| Self::from_entry(entry))
+            .and_then(Self::from_entry)
     }
 }
 
@@ -720,7 +710,6 @@ impl FromDbc for SpnDefinition {
                 scale,
                 offset,
                 min_value,
-                max_value,
                 units,
                 ..
             }) => {
@@ -746,10 +735,10 @@ impl FromDbc for SpnDefinition {
                 Ok(())
             }
             Entry::SignalAttribute(SignalAttribute {
-                name,
                 id,
                 signal_name,
                 value,
+                ..
             }) => {
                 self.name = signal_name;
                 self.id = id;
@@ -822,10 +811,10 @@ impl From<SignalDescription> for SpnDefinition {
 impl From<SignalAttribute> for SpnDefinition {
     fn from(
         SignalAttribute {
-            name,
             id,
             signal_name,
             value,
+            ..
         }: SignalAttribute,
     ) -> Self {
         SpnDefinition::new(
@@ -848,8 +837,6 @@ impl From<SignalAttribute> for SpnDefinition {
 
 #[cfg(test)]
 mod tests {
-
-    use dbc::*;
     use pgn::*;
 
     lazy_static! {

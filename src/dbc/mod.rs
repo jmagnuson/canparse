@@ -138,8 +138,8 @@ impl Display for Entry {
     }
 }
 
-/// Internal type for DBC `Entry` line.
 enum_from_primitive! {
+/// Internal type for DBC `Entry` line.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum EntryType {
     Version = 0,
@@ -301,8 +301,6 @@ pub enum AttributeType {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     macro_rules! test_entry {
         ($test_name: ident, $entry_type: ident, $test_line: expr, $expected: expr) => {
             mod $test_name {
