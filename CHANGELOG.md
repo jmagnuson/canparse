@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 
 ## [Unreleased]
 
+## [0.1.4] - 2019-07-28
+
 ### Added
 - Implement `DbcLibrary`
 
@@ -15,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 - Replace regex parsing with `nom` to handle strings with newlines
 - Convert message/PGN ID from `String` to `u32`
 
-## [0.1.3] - 2018-02-09
+## [0.1.3] - 2019-02-09
 
 ### Changed
 - Change `get_spn` to take `&str` input
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org).
 
 ## [0.1.1] - 2018-05-22
 
-[Unreleased]: https://github.com/jmagnuson/canparse/compare/v0.1.3...master
+[Unreleased]: https://github.com/jmagnuson/canparse/compare/v0.1.4...master
+[0.1.4]: https://github.com/jmagnuson/canparse/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jmagnuson/canparse/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jmagnuson/canparse/compare/v0.1.1...v0.1.2
