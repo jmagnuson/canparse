@@ -18,11 +18,11 @@ default = []
 use-socketcan = ["socketcan"]
 
 [dependencies]
+byteorder = "1.3"
 encoding = "0.2"
 enum_primitive = "0.1"
-byteorder = "1.3"
-socketcan = { version = "1.7", optional = true }
 nom = "4.2"
+socketcan = { version = "1.7", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.3"
