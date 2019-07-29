@@ -18,8 +18,6 @@ default = []
 use-socketcan = ["socketcan"]
 
 [dependencies]
-rustc-serialize = "0.3"
-regex = "1.1"
 lazy_static = "1.2"
 encoding = "0.2"
 enum_primitive = "0.1"
@@ -28,7 +26,6 @@ socketcan = { version = "1.7", optional = true }
 nom = "4.2"
 
 [dev-dependencies]
-rand = "0.6"
 
 [package.metadata.docs.rs]
 features = ["use-socketcan"]
