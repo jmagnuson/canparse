@@ -40,6 +40,7 @@
 extern crate encoding;
 #[macro_use]
 extern crate enum_primitive;
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 extern crate byteorder;
