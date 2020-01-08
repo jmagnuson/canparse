@@ -1,4 +1,4 @@
-use ::dbc;
+use crate::dbc;
 use std::collections::HashMap;
 
 /// Trait for converting `Entry` values into a library's own entries.
@@ -371,7 +371,7 @@ impl DbcLibrary {
 #[cfg(test)]
 mod tests {
 
-    use dbc::{Entry, SignalDefinition, Version};
+    use crate::dbc::{Entry, SignalDefinition, Version};
     use super::{DbcLibrary};
 
     lazy_static! {

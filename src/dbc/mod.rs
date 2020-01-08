@@ -199,7 +199,7 @@ impl ParseEntryError {
     }
 
     #[doc(hidden)]
-    pub fn __cause(&self) -> Option<&Error> {
+    pub fn __cause(&self) -> Option<&dyn Error> {
         self.kind.__cause()
     }
 }
@@ -215,7 +215,7 @@ impl Error for ParseEntryError {
         self.__description()
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         self.__cause()
     }
 }
@@ -243,7 +243,7 @@ impl EntryErrorKind {
         }
     }
     #[doc(hidden)]
-    pub fn __cause(&self) -> Option<&Error> {
+    pub fn __cause(&self) -> Option<&dyn Error> {
         match *self {
             EntryErrorKind::RegexNoMatch => None,
             EntryErrorKind::UnknownEntryType(_) => None,
@@ -304,7 +304,7 @@ mod tests {
     macro_rules! test_entry {
         ($test_name: ident, $entry_type: ident, $test_line: expr, $expected: expr) => {
             mod $test_name {
-                use dbc::*;
+                use crate::dbc::*;
                 use std::str::FromStr;
 
                 #[test]

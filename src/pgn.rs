@@ -3,7 +3,7 @@
 #![allow(clippy::trivially_copy_pass_by_ref, clippy::too_many_arguments)]
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use dbc::{nom as nomparse, *};
+use crate::dbc::{nom as nomparse, *};
 use encoding::all::ISO_8859_1;
 use encoding::{DecoderTrap, Encoding};
 use nom;
@@ -259,7 +259,7 @@ impl ParseDefinitionError {
     }
 
     #[doc(hidden)]
-    pub fn __cause(&self) -> Option<&Error> {
+    pub fn __cause(&self) -> Option<&dyn Error> {
         self.kind.__cause()
     }
 }
@@ -275,7 +275,7 @@ impl Error for ParseDefinitionError {
         self.__description()
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         self.__cause()
     }
 }
@@ -301,7 +301,7 @@ impl DefinitionErrorKind {
     }
 
     #[doc(hidden)]
-    pub fn __cause(&self) -> Option<&Error> {
+    pub fn __cause(&self) -> Option<&dyn Error> {
         match self {
             DefinitionErrorKind::Entry(e) => Some(e),
             DefinitionErrorKind::UnusedEntry(_e) => None,
@@ -550,7 +550,7 @@ pub trait ParseMessage<N> {
 
     /// Returns a closure which parses CAN message type `N` into generic `f32` signal value on
     /// success, or `None` on failure.
-    fn parser(&self) -> Box<Fn(N) -> Option<f32>>;
+    fn parser(&self) -> Box<dyn Fn(N) -> Option<f32>>;
 }
 
 impl SpnDefinition {
@@ -600,7 +600,7 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
         )
     }
 
-    fn parser(&self) -> Box<Fn(&[u8; 8]) -> Option<f32>> {
+    fn parser(&self) -> Box<dyn Fn(&[u8; 8]) -> Option<f32>> {
         let bit_len = self.bit_len;
         let start_bit = self.start_bit;
         let scale = self.scale;
@@ -626,7 +626,7 @@ impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
         )
     }
 
-    fn parser(&self) -> Box<Fn(&[u8]) -> Option<f32>> {
+    fn parser(&self) -> Box<dyn Fn(&[u8]) -> Option<f32>> {
         let bit_len = self.bit_len;
         let start_bit = self.start_bit;
         let scale = self.scale;
@@ -837,7 +837,7 @@ impl From<SignalAttribute> for SpnDefinition {
 
 #[cfg(test)]
 mod tests {
-    use pgn::*;
+    use crate::pgn::*;
 
     lazy_static! {
         static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
