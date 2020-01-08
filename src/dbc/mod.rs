@@ -226,9 +226,8 @@ enum EntryErrorKind {
     /// Could not find a regex match for input
     RegexNoMatch,
     /// Integer could not be converted into valid `EntryType`
+    #[allow(dead_code)]
     UnknownEntryType(i32),
-    /// Failure to combine all values from regex capture
-    RegexCapture,
 }
 
 impl EntryErrorKind {
@@ -239,7 +238,6 @@ impl EntryErrorKind {
             EntryErrorKind::UnknownEntryType(_) => {
                 "integer could not be converted into valid EntryType"
             }
-            EntryErrorKind::RegexCapture => "failure to combine all values from regex capture",
         }
     }
     #[doc(hidden)]
@@ -247,7 +245,6 @@ impl EntryErrorKind {
         match *self {
             EntryErrorKind::RegexNoMatch => None,
             EntryErrorKind::UnknownEntryType(_) => None,
-            EntryErrorKind::RegexCapture => None,
         }
     }
 }
