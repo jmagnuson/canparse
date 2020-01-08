@@ -3,7 +3,7 @@
 #![allow(clippy::trivially_copy_pass_by_ref, clippy::too_many_arguments)]
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use crate::dbc::{nom as nomparse, *};
+use crate::dbc::{parser as nomparse, *};
 use encoding::all::ISO_8859_1;
 use encoding::{DecoderTrap, Encoding};
 use nom;

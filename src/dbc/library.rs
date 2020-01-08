@@ -263,8 +263,9 @@ use std::io::prelude::*;
 use encoding::{DecoderTrap, Encoding};
 use encoding::all::ISO_8859_1;
 use std::path::Path;
-use super::{nom as nomparse, *};
-use nom;
+
+use super::parser;
+use crate::dbc::Entry;
 
 impl DbcLibrary {
     /// Creates a new `DbcLibrary` instance given an existing lookup table.
@@ -315,7 +316,7 @@ impl DbcLibrary {
 
         let mut i = data.as_str();
         while !i.is_empty() {
-            match nomparse::entry(i) {
+            match parser::entry(i) {
                 Ok((new_i, entry)) => {
                     if let Err(_e) = lib.add_entry(entry) {
                         // TODO: Handle add_entry error

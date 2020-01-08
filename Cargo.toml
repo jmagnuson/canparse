@@ -8,6 +8,7 @@ documentation = "https://docs.rs/canparse"
 readme = "README.md"
 keywords = ["can", "socketcan", "j1939", "dbc", "parser"]
 license = "MIT/Apache-2.0"
+edition = "2018"
 
 [lib]
 name = "canparse"

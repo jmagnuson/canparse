@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 pub mod library;
-pub mod nom;
+pub mod parser;
 
 pub use self::library::DbcLibrary;
 
@@ -269,7 +269,7 @@ impl FromStr for Entry {
     type Err = ParseEntryError;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        nom::entry(line)
+        parser::entry(line)
             .map_err(|_e| EntryErrorKind::RegexNoMatch.into())
             .map(|(_i, entry)| entry)
     }
@@ -340,9 +340,9 @@ mod tests {
 
                 #[test]
                 fn nom_parse() {
-                    assert_eq!(nom::$test_name($test_line).unwrap().1, $expected);
+                    assert_eq!(parser::$test_name($test_line).unwrap().1, $expected);
                     assert_eq!(
-                        nom::entry($test_line).unwrap().1,
+                        parser::entry($test_line).unwrap().1,
                         Entry::$entry_type($expected)
                     );
                 }
