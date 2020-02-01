@@ -110,7 +110,7 @@ named!(pub message_description<&str, MessageDescription>,
         ( MessageDescription {
             id: id,
             signal_name: "".to_string(),
-            description: description.to_string(),
+            description: description,
         } )
     )
 );
@@ -131,7 +131,7 @@ named!(pub message_attribute<&str, MessageAttribute>,
         tag!(";") >>
         line_ending >>
         ( MessageAttribute {
-            name: name.to_string(),
+            name: name,
             signal_name: "".to_string(),
             id: id,
             value: value.to_string()
@@ -187,7 +187,7 @@ named!(pub signal_definition<&str, SignalDefinition>,
             offset: offset,
             min_value: min_value,
             max_value: max_value,
-            units: units.to_string(),
+            units: units,
             receiving_node: receiving_node.to_string(),
         } )
     )
@@ -211,7 +211,7 @@ named!(pub signal_description<&str, SignalDescription>,
         ( SignalDescription {
             id: id,
             signal_name: signal_name.to_string(),
-            description: description.to_string()
+            description: description
         } )
     )
 );
@@ -234,7 +234,7 @@ named!(pub signal_attribute<&str, SignalAttribute>,
         tag!(";") >>
         line_ending >>
         ( SignalAttribute {
-            name: name.to_string(),
+            name: name,
             id: id,
             signal_name: signal_name.to_string(),
             value: value.to_string()
