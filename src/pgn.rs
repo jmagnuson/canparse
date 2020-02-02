@@ -174,7 +174,7 @@ impl PgnLibrary {
             Entry::SignalDescription(SignalDescription { ref id, .. }) => id,
             Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id,
             _ => {
-                return Err(format!("Unsupported entry: {}.", entry).to_string());
+                return Err(format!("Unsupported entry: {}.", entry));
             }
         };
 
@@ -643,7 +643,7 @@ impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
 #[cfg(feature = "use-socketcan")]
 impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
     fn parse_message(&self, frame: &CANFrame) -> Option<f32> {
-        let ref msg = frame.data();
+        let msg = &frame.data();
         parse_message(
             self.bit_len,
             self.start_bit,
@@ -654,7 +654,7 @@ impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
         )
     }
 
-    fn parser(&self) -> Box<Fn(&CANFrame) -> Option<f32>> {
+    fn parser(&self) -> Box<dyn Fn(&CANFrame) -> Option<f32>> {
         let bit_len = self.bit_len;
         let start_bit = self.start_bit;
         let scale = self.scale;
@@ -662,7 +662,7 @@ impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
         let little_endian = self.little_endian;
 
         let fun = move |frame: &CANFrame| {
-            let ref msg = frame.data();
+            let msg = &frame.data();
             parse_message(bit_len, start_bit, little_endian, scale, offset, msg)
         };
 
