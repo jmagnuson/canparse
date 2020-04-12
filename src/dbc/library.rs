@@ -7,14 +7,13 @@ pub trait FromDbc {
 
     /// Converts an `Entity` value from scratch.
     fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err>
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 
     /// Merges the given `Entity` with a `mut` version of the library's entity.  Useful for when
     /// multiple `Entry` types contribute to various attributes within the same destination.
     fn merge_entry(&mut self, entry: dbc::Entry) -> Result<(), Self::Err>;
 }
-
 
 type SignalAttribute = String;
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -52,122 +51,124 @@ pub struct Message {
 impl FromDbc for Message {
     type Err = ();
 
-    fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err> where
-        Self: Sized {
-
+    fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err>
+    where
+        Self: Sized,
+    {
         match entry {
             Entry::MessageDefinition(dbc::MessageDefinition {
-                                         id: _id,
-                                         name,
-                                         message_len,
-                                         sending_node,
-                                     }) => {
-                Ok(Message {
-                    name: name,
-                    message_len: message_len,
-                    sending_node: sending_node,
-                    .. Default::default()
-                })
-            },
+                id: _id,
+                name,
+                message_len,
+                sending_node,
+            }) => Ok(Message {
+                name: name,
+                message_len: message_len,
+                sending_node: sending_node,
+                ..Default::default()
+            }),
             Entry::MessageDescription(dbc::MessageDescription {
-                                          id: _id,
-                                          signal_name: _signal_name,
-                                          description,
-                                      }) => {
-                Ok(Message {
-                    description: Some(description),
-                    .. Default::default()
-                })
-            },
+                id: _id,
+                signal_name: _signal_name,
+                description,
+            }) => Ok(Message {
+                description: Some(description),
+                ..Default::default()
+            }),
             Entry::MessageAttribute(dbc::MessageAttribute {
-                                        name,
-                                        signal_name: _signal_name,
-                                        id: _id,
-                                        value,
-                                    }) => {
+                name,
+                signal_name: _signal_name,
+                id: _id,
+                value,
+            }) => {
                 let mut attributes = HashMap::new();
                 attributes.insert(name, value);
 
                 Ok(Message {
                     attributes: attributes,
-                    .. Default::default()
+                    ..Default::default()
                 })
-            },
+            }
             // TODO: Need to propogate Signal FromDbc in here..maybe, or just search in DbcLibrary
-            _ => Err(())
+            _ => Err(()),
         }
     }
 
     fn merge_entry(&mut self, entry: dbc::Entry) -> Result<(), Self::Err> {
-
         match entry {
-            Entry::MessageDefinition(
-                dbc::MessageDefinition {
-                    id: _id,
-                    name,
-                    message_len,
-                    sending_node,
-                }) => {
+            Entry::MessageDefinition(dbc::MessageDefinition {
+                id: _id,
+                name,
+                message_len,
+                sending_node,
+            }) => {
                 self.name = name;
                 self.message_len = message_len;
                 self.sending_node = sending_node;
                 Ok(())
-            },
-            Entry::MessageDescription(
-                dbc::MessageDescription {
-                    id: _id,
-                    signal_name: _signal_name,
-                    description,
-                }) => {
+            }
+            Entry::MessageDescription(dbc::MessageDescription {
+                id: _id,
+                signal_name: _signal_name,
+                description,
+            }) => {
                 self.description = Some(description);
                 Ok(())
-            },
-            Entry::MessageAttribute(
-                dbc::MessageAttribute {
-                    name,
-                    signal_name: _signal_name,
-                    id: _id,
-                    value,
-                }) => {
+            }
+            Entry::MessageAttribute(dbc::MessageAttribute {
+                name,
+                signal_name: _signal_name,
+                id: _id,
+                value,
+            }) => {
                 if let Some(_previous_value) = self.attributes.insert(name, value) {
                     // TODO: Warn that we somehow already had an existing entry
                 }
                 Ok(())
-            },
+            }
             Entry::SignalDefinition(inner) => {
                 if self.signals.contains_key(&inner.name) {
-                    (*self.signals.get_mut(&inner.name).expect("Already checked for Signal key"))
-                        .merge_entry(Entry::SignalDefinition(inner))
+                    (*self
+                        .signals
+                        .get_mut(&inner.name)
+                        .expect("Already checked for Signal key"))
+                    .merge_entry(Entry::SignalDefinition(inner))
                 } else {
                     let name = inner.name.clone();
                     let signal = Signal::from_entry(Entry::SignalDefinition(inner))?;
                     self.signals.insert(name, signal);
                     Ok(())
                 }
-            },
+            }
             Entry::SignalDescription(inner) => {
                 if self.signals.contains_key(&inner.signal_name) {
-                    (*self.signals.get_mut(&inner.signal_name).expect("Already checked for Signal key"))
-                        .merge_entry(Entry::SignalDescription(inner))
+                    (*self
+                        .signals
+                        .get_mut(&inner.signal_name)
+                        .expect("Already checked for Signal key"))
+                    .merge_entry(Entry::SignalDescription(inner))
                 } else {
                     let name = inner.signal_name.clone();
                     let signal = Signal::from_entry(Entry::SignalDescription(inner))?;
                     self.signals.insert(name, signal);
                     Ok(())
                 }
-            },
+            }
             Entry::SignalAttribute(inner) => {
                 if self.signals.contains_key(&inner.signal_name) {
-                    (*self.signals.get_mut(&inner.signal_name).expect("Already checked for Signal key"))
-                        .merge_entry(Entry::SignalAttribute(inner))
+                    (*self
+                        .signals
+                        .get_mut(&inner.signal_name)
+                        .expect("Already checked for Signal key"))
+                    .merge_entry(Entry::SignalAttribute(inner))
                 } else {
                     let name = inner.signal_name.clone();
                     let signal = Signal::from_entry(Entry::SignalAttribute(inner))?;
                     self.signals.insert(name, signal);
                     Ok(())
                 }
-            },
-            _ => Err(())
+            }
+            _ => Err(()),
         }
     }
 }
@@ -175,45 +176,42 @@ impl FromDbc for Message {
 impl FromDbc for Signal {
     type Err = ();
 
-    fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err> where
-        Self: Sized {
+    fn from_entry(entry: dbc::Entry) -> Result<Self, Self::Err>
+    where
+        Self: Sized,
+    {
         match entry {
-            Entry::SignalDefinition(definition) => {
-                Ok(Signal {
-                    attributes: HashMap::new(),
-                    description: None,
-                    definition: Some(definition),
-                    value_definition: None,
-                })
-            },
-            Entry::SignalDescription(
-                dbc::SignalDescription {
-                    id: _id,
-                    signal_name: _signal_name,
-                    description,
-                }) => {
-                Ok(Signal {
-                    attributes: HashMap::new(),
-                    description: Some(description),
-                    definition: None,
-                    value_definition: None,
-                })
-            },
+            Entry::SignalDefinition(definition) => Ok(Signal {
+                attributes: HashMap::new(),
+                description: None,
+                definition: Some(definition),
+                value_definition: None,
+            }),
+            Entry::SignalDescription(dbc::SignalDescription {
+                id: _id,
+                signal_name: _signal_name,
+                description,
+            }) => Ok(Signal {
+                attributes: HashMap::new(),
+                description: Some(description),
+                definition: None,
+                value_definition: None,
+            }),
             Entry::SignalAttribute(dbc::SignalAttribute {
-                                       name,
-                                       id: _id,
-                                       signal_name: _signal_name,
-                                       value,
-                                   }) => {
+                name,
+                id: _id,
+                signal_name: _signal_name,
+                value,
+            }) => {
                 let mut attributes = HashMap::new();
                 attributes.insert(name, value);
                 Ok(Signal {
                     attributes,
                     description: None,
                     definition: None,
-                    value_definition: None
+                    value_definition: None,
                 })
-            },
+            }
             _ => Err(()),
         }
     }
@@ -223,27 +221,26 @@ impl FromDbc for Signal {
             Entry::SignalDefinition(definition) => {
                 self.definition = Some(definition);
                 Ok(())
-            },
-            Entry::SignalDescription(
-                dbc::SignalDescription {
-                    id: _id,
-                    signal_name: _signal_name,
-                    description,
-                }) => {
+            }
+            Entry::SignalDescription(dbc::SignalDescription {
+                id: _id,
+                signal_name: _signal_name,
+                description,
+            }) => {
                 self.description = Some(description);
                 Ok(())
-            },
+            }
             Entry::SignalAttribute(dbc::SignalAttribute {
-                                       name,
-                                       id: _id,
-                                       signal_name: _signal_name,
-                                       value,
-                                   }) => {
+                name,
+                id: _id,
+                signal_name: _signal_name,
+                value,
+            }) => {
                 if let Some(_previous_value) = self.attributes.insert(name, value) {
                     // TODO: Warn that we somehow already had an existing entry
                 }
                 Ok(())
-            },
+            }
             _ => Err(()),
         }
     }
@@ -257,11 +254,11 @@ pub struct DbcLibrary {
     messages: HashMap<u32, Message>,
 }
 
+use encoding::all::ISO_8859_1;
+use encoding::{DecoderTrap, Encoding};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use encoding::{DecoderTrap, Encoding};
-use encoding::all::ISO_8859_1;
 use std::path::Path;
 
 use super::parser;
@@ -289,17 +286,17 @@ impl DbcLibrary {
     ///
     /// ```
     pub fn from_dbc_file<P>(path: P) -> io::Result<Self>
-        where
-            P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
     {
         Self::from_encoded_dbc_file(path, ISO_8859_1)
     }
 
     #[doc(hidden)]
     pub fn from_encoded_dbc_file<P, E>(path: P, encoding: &E) -> io::Result<Self>
-        where
-            P: AsRef<Path>,
-            E: Encoding,
+    where
+        P: AsRef<Path>,
+        E: Encoding,
     {
         let mut lib = DbcLibrary::default();
 
@@ -358,11 +355,17 @@ impl DbcLibrary {
             }
         };
 
-        self.messages.entry(_id)
-            .and_modify(|cur_entry| cur_entry.merge_entry(entry.clone())
-                .unwrap_or_else(|_| panic!("Already checked for Signal key: {:?}", entry))
-            ).or_insert_with(|| Message::from_entry(entry.clone())
-                .unwrap_or_else(|_| panic!("Some inserted a Signal for empty key: {:?}", _id)));
+        self.messages
+            .entry(_id)
+            .and_modify(|cur_entry| {
+                cur_entry
+                    .merge_entry(entry.clone())
+                    .unwrap_or_else(|_| panic!("Already checked for Signal key: {:?}", entry))
+            })
+            .or_insert_with(|| {
+                Message::from_entry(entry.clone())
+                    .unwrap_or_else(|_| panic!("Some inserted a Signal for empty key: {:?}", _id))
+            });
 
         self.last_id = Some(_id);
         Ok(())
@@ -372,8 +375,8 @@ impl DbcLibrary {
 #[cfg(test)]
 mod tests {
 
+    use super::DbcLibrary;
     use crate::dbc::{Entry, SignalDefinition, Version};
-    use super::{DbcLibrary};
 
     lazy_static! {
         static ref DBCLIB_EMPTY: DbcLibrary = DbcLibrary::default();
@@ -416,9 +419,10 @@ mod tests {
                 .signals
                 .get("Engine_Speed")
                 .expect("failed to get Signal from DbcDefinition")
-                .definition.as_ref()
-                .expect("failed to get SignalDefinition from DbcDefinition")
-            ,*SIGNALDEF
+                .definition
+                .as_ref()
+                .expect("failed to get SignalDefinition from DbcDefinition"),
+            *SIGNALDEF
         );
     }
 

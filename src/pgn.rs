@@ -2,8 +2,8 @@
 
 #![allow(clippy::trivially_copy_pass_by_ref, clippy::too_many_arguments)]
 
-use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use crate::dbc::{parser as nomparse, *};
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use encoding::all::ISO_8859_1;
 use encoding::{DecoderTrap, Encoding};
 use nom;
@@ -185,10 +185,10 @@ impl PgnLibrary {
         match self.pgns.entry(pgn) {
             HashMapEntry::Occupied(mut existing) => {
                 existing.get_mut().merge_entry(entry).unwrap();
-            },
+            }
             HashMapEntry::Vacant(vacant) => {
                 vacant.insert(PgnDefinition::from_entry(entry).unwrap());
-            },
+            }
         }
 
         Ok(())
@@ -344,11 +344,7 @@ impl FromDbc for PgnDefinition {
         Self: Sized,
     {
         match entry {
-            Entry::MessageDefinition(MessageDefinition {
-                id,
-                name,
-                ..
-            }) => {
+            Entry::MessageDefinition(MessageDefinition { id, name, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
@@ -361,9 +357,7 @@ impl FromDbc for PgnDefinition {
                 ))
             }
             Entry::MessageDescription(MessageDescription {
-                id,
-                description,
-                ..
+                id, description, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -376,10 +370,7 @@ impl FromDbc for PgnDefinition {
                     HashMap::new(),
                 ))
             }
-            Entry::MessageAttribute(MessageAttribute {
-                id,
-                ..
-            }) => {
+            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
@@ -398,9 +389,7 @@ impl FromDbc for PgnDefinition {
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
             Entry::MessageDefinition(MessageDefinition {
-                id,
-                message_len,
-                ..
+                id, message_len, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -410,9 +399,7 @@ impl FromDbc for PgnDefinition {
                 Ok(())
             }
             Entry::MessageDescription(MessageDescription {
-                id,
-                description,
-                ..
+                id, description, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -421,10 +408,7 @@ impl FromDbc for PgnDefinition {
                 self.description = description;
                 Ok(())
             }
-            Entry::MessageAttribute(MessageAttribute {
-                id,
-                ..
-            }) => {
+            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 self.pgn = pgn;
@@ -945,6 +929,5 @@ mod tests {
                 2728.5
             );
         }
-
     }
 }

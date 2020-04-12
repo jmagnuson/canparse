@@ -281,15 +281,9 @@ pub struct ValueDefinition {
 
 pub enum AttributeType {
     /// Integer type with min/max values
-    Int {
-        min: i32,
-        max: i32,
-    },
+    Int { min: i32, max: i32 },
     /// Float type with min/max values
-    Float {
-        min: f32,
-        max: f32,
-    },
+    Float { min: f32, max: f32 },
     /// String type
     String,
     /// Enum type, represented as a vector of `String`s
