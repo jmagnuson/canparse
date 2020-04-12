@@ -4,6 +4,15 @@ rust:
   - beta
   - nightly
 
+before_script:
+  - |
+    if [[ "$TRAVIS_RUST_VERSION" == stable && "$TRAVIS_OS_NAME" = "linux" ]]; then
+      rustup component add clippy
+      rustup component add rustfmt
+      cargo fmt -- --check
+      cargo clippy --all --bins --examples --tests -- -Wclippy::all -Dwarnings
+    fi
+
 script:
   - cargo build --verbose --no-default-features
   - cargo test --no-run --verbose --no-default-features

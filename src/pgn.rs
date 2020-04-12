@@ -2,8 +2,8 @@
 
 #![allow(clippy::trivially_copy_pass_by_ref, clippy::too_many_arguments)]
 
-use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use crate::dbc::{parser as nomparse, *};
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use encoding::all::ISO_8859_1;
 use encoding::{DecoderTrap, Encoding};
 use nom;
@@ -185,10 +185,10 @@ impl PgnLibrary {
         match self.pgns.entry(pgn) {
             HashMapEntry::Occupied(mut existing) => {
                 existing.get_mut().merge_entry(entry).unwrap();
-            },
+            }
             HashMapEntry::Vacant(vacant) => {
                 vacant.insert(PgnDefinition::from_entry(entry).unwrap());
-            },
+            }
         }
 
         Ok(())
@@ -344,11 +344,7 @@ impl FromDbc for PgnDefinition {
         Self: Sized,
     {
         match entry {
-            Entry::MessageDefinition(MessageDefinition {
-                id,
-                name,
-                ..
-            }) => {
+            Entry::MessageDefinition(MessageDefinition { id, name, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
@@ -361,9 +357,7 @@ impl FromDbc for PgnDefinition {
                 ))
             }
             Entry::MessageDescription(MessageDescription {
-                id,
-                description,
-                ..
+                id, description, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -376,10 +370,7 @@ impl FromDbc for PgnDefinition {
                     HashMap::new(),
                 ))
             }
-            Entry::MessageAttribute(MessageAttribute {
-                id,
-                ..
-            }) => {
+            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 Ok(PgnDefinition::new(
@@ -398,9 +389,7 @@ impl FromDbc for PgnDefinition {
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
             Entry::MessageDefinition(MessageDefinition {
-                id,
-                message_len,
-                ..
+                id, message_len, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -410,9 +399,7 @@ impl FromDbc for PgnDefinition {
                 Ok(())
             }
             Entry::MessageDescription(MessageDescription {
-                id,
-                description,
-                ..
+                id, description, ..
             }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
@@ -421,10 +408,7 @@ impl FromDbc for PgnDefinition {
                 self.description = description;
                 Ok(())
             }
-            Entry::MessageAttribute(MessageAttribute {
-                id,
-                ..
-            }) => {
+            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
                 self.pgn = pgn;
@@ -838,6 +822,7 @@ impl From<SignalAttribute> for SpnDefinition {
 #[cfg(test)]
 mod tests {
     use crate::pgn::*;
+    use approx::assert_relative_eq;
 
     lazy_static! {
         static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
@@ -896,8 +881,8 @@ mod tests {
 
     #[test]
     fn test_parse_array() {
-        assert_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5);
-        assert_eq!(
+        assert_relative_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5f32);
+        assert_relative_eq!(
             SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
             2728.5
         );
@@ -905,16 +890,16 @@ mod tests {
 
     #[test]
     fn test_parse_message() {
-        assert_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
-        assert_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
         assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
         assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
     }
 
     #[test]
     fn parse_message_closure() {
-        assert_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
-        assert_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
     }
 
     #[cfg(feature = "use-socketcan")]
@@ -932,18 +917,17 @@ mod tests {
 
         #[test]
         fn parse_canframe_closure() {
-            assert_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
-            assert_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
         }
 
         #[test]
         fn test_parse_canframe() {
-            assert_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
-            assert_eq!(
+            assert_relative_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(
                 SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
             );
         }
-
     }
 }
