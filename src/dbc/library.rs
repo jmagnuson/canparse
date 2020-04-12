@@ -354,7 +354,7 @@ impl DbcLibrary {
             Entry::SignalDescription(dbc::SignalDescription { ref id, .. }) => id,
             Entry::SignalAttribute(dbc::SignalAttribute { ref id, .. }) => id,
             _ => {
-                return Err(format!("Unsupported entry: {}.", entry).to_string());
+                return Err(format!("Unsupported entry: {}.", entry));
             }
         };
 

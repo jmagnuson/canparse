@@ -174,7 +174,7 @@ impl PgnLibrary {
             Entry::SignalDescription(SignalDescription { ref id, .. }) => id,
             Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id,
             _ => {
-                return Err(format!("Unsupported entry: {}.", entry).to_string());
+                return Err(format!("Unsupported entry: {}.", entry));
             }
         };
 
@@ -838,6 +838,7 @@ impl From<SignalAttribute> for SpnDefinition {
 #[cfg(test)]
 mod tests {
     use crate::pgn::*;
+    use approx::assert_relative_eq;
 
     lazy_static! {
         static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
@@ -896,8 +897,8 @@ mod tests {
 
     #[test]
     fn test_parse_array() {
-        assert_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5);
-        assert_eq!(
+        assert_relative_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5f32);
+        assert_relative_eq!(
             SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
             2728.5
         );
@@ -905,16 +906,16 @@ mod tests {
 
     #[test]
     fn test_parse_message() {
-        assert_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
-        assert_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
         assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
         assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
     }
 
     #[test]
     fn parse_message_closure() {
-        assert_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
-        assert_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
     }
 
     #[cfg(feature = "use-socketcan")]
@@ -932,14 +933,14 @@ mod tests {
 
         #[test]
         fn parse_canframe_closure() {
-            assert_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
-            assert_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
         }
 
         #[test]
         fn test_parse_canframe() {
-            assert_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
-            assert_eq!(
+            assert_relative_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(
                 SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
             );
