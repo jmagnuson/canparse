@@ -1,5 +1,6 @@
 extern crate canparse;
 
+use approx::assert_relative_eq;
 use canparse::pgn::{ParseMessage, PgnLibrary, SpnDefinition};
 
 #[test]
@@ -7,13 +8,22 @@ fn pgnlib_build_parse() {
     let lib = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
 
     // Pull signal definition for engine speed
-    let enginespeed_def: &SpnDefinition = lib.get_spn("Engine_Speed").unwrap();
+    let enginespeed_def: &SpnDefinition = dbg!(lib.get_spn("Engine_Speed").unwrap());
 
+    /*{
     // Parse frame containing engine speed
     let msg: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
     let engine_speed: f32 = enginespeed_def.parse_message(&msg).unwrap();
 
-    assert!(engine_speed - 2728.5 < std::f32::EPSILON);
+    assert_relative_eq!(engine_speed, 2728.5);
+    }*/
+
+    {
+    let msg: [u8; 8] = [0x00, 0x01, 0x00, 0x00, 0xcb, 0xff, 0x02, 0x00];
+    let engine_speed: f32 = enginespeed_def.parse_message(&msg).unwrap();
+
+    assert_relative_eq!(engine_speed, -53.0);
+    }
 }
 
 #[test]

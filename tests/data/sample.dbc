@@ -3,7 +3,7 @@ VERSION "A version string°"
 BO_ 2364539904 EEC1 : 8 Vector__XXX
 CM_ BO_ 2364539904 "Engine Controller";
 BA_ "SingleFrame" BO_ 2364539904 0;
- SG_ Engine_Speed : 24|16@1+ (0.125,0) [0|8031.88] "rpm" Vector__XXX
+ SG_ Engine_Speed : 32|16@1- (1,0) [0|0] "" Vector__XXX
 CM_ SG_ 2364539904 Engine_Speed "A description for Engine speed.";
 BA_ "SPN" SG_ 2364539904 Engine_Speed 190;
 
