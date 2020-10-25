@@ -489,8 +489,19 @@ fn parse_array(
     little_endian: bool,
     scale: f32,
     offset: f32,
+    signed: bool,
     msg: &[u8; 8],
 ) -> Option<f32> {
+    parse_message(
+        bit_len,
+        start_bit,
+        little_endian,
+        scale,
+        offset,
+        signed,
+        &msg[..],
+    )
+    /*
     let msg64: u64 = if little_endian {
         LittleEndian::read_u64(msg)
     } else {
@@ -500,6 +511,7 @@ fn parse_array(
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
 
     Some((((msg64 >> start_bit) & bit_mask) as f32) * scale + offset)
+    */
 }
 
 /// Internal function for parsing CAN message slices given the definition parameters.  This is where
@@ -510,8 +522,16 @@ fn parse_message(
     little_endian: bool,
     scale: f32,
     offset: f32,
+    signed: bool,
     msg: &[u8],
 ) -> Option<f32> {
+    use std::dbg;
+
+    fn twos_complement(input_value: i32, num_bits: usize) -> i32 {
+        let mask = 2i32.pow((num_bits - 1) as u32);
+        -(input_value & mask) + (input_value & !mask)
+    }
+
     if msg.len() < 8 {
         return None;
     }
@@ -520,10 +540,29 @@ fn parse_message(
     } else {
         BigEndian::read_u64(msg)
     };
+    dbg!(msg64);
 
-    let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
+    let bit_mask: u64 = dbg!(2u64.pow(bit_len as u32) - 1);
+    assert!(bit_mask < std::u32::MAX as u64);
 
-    Some((((msg64 >> start_bit) & bit_mask) as f32) * scale + offset)
+    let res: u64 = dbg!(msg64 >> start_bit);
+    let res: u64 = dbg!(res & bit_mask);
+    let res: i32 = dbg!(res as i32);
+    let res = if signed {
+        twos_complement(res, bit_len)
+    }else {
+        res
+    };
+    let res: f32 = dbg!(res as f32);
+    let res = dbg!(res * scale);
+    let res = dbg!(res + offset);
+
+    Some(res)
+    /*if signed {
+        Some(((((msg64 >> start_bit) & bit_mask) as i32) as f32) * scale + offset)
+    } else {
+        Some(((((msg64 >> start_bit) & bit_mask) as u32) as f32) * scale + offset)
+    }*/
 }
 
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
@@ -580,6 +619,7 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
             self.little_endian,
             self.scale,
             self.offset,
+            self.signed,
             msg,
         )
     }
@@ -590,9 +630,10 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
         let scale = self.scale;
         let offset = self.offset;
         let little_endian = self.little_endian;
+        let signed = self.signed;
 
         let fun =
-            move |msg: &[u8; 8]| parse_array(bit_len, start_bit, little_endian, scale, offset, msg);
+            move |msg: &[u8; 8]| parse_array(bit_len, start_bit, little_endian, scale, offset, signed, msg);
 
         Box::new(fun)
     }
@@ -606,6 +647,7 @@ impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
             self.little_endian,
             self.scale,
             self.offset,
+            self.signed,
             msg,
         )
     }
@@ -616,9 +658,10 @@ impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
         let scale = self.scale;
         let offset = self.offset;
         let little_endian = self.little_endian;
+        let signed = self.signed;
 
         let fun =
-            move |msg: &[u8]| parse_message(bit_len, start_bit, little_endian, scale, offset, msg);
+            move |msg: &[u8]| parse_message(bit_len, start_bit, little_endian, scale, offset, signed, msg);
 
         Box::new(fun)
     }
