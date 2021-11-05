@@ -70,10 +70,13 @@ named!(pub message_definition<&str, MessageDefinition>,
     do_parse!(
         tag!("BO_")   >>
         space >>
+        id: map_res!(
+            digit,
+            FromStr::from_str) >>
         text: take_until_either!("\t\r\n") >>
         line_ending >>
         ( MessageDefinition {
-            id: 0,
+            id,
             name: "whatever".into(),
             message_len: 8,
             sending_node: "lol".into(),
