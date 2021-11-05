@@ -359,6 +359,8 @@ impl DbcLibrary {
             }
         };
 
+        println!("Using ID: {}", _id);
+
         self.messages
             .entry(_id)
             .and_modify(|cur_entry| {
