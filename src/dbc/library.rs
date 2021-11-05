@@ -315,7 +315,7 @@ impl DbcLibrary {
         while !i.is_empty() {
             match parser::entry(i) {
                 Ok((new_i, entry)) => {
-                    println!("String just parsed: {}", &i[0..(i.len() - new_i.len())]);
+                    println!("String just parsed: {:?}", &i[0..(i.len() - new_i.len())]);
                     if let Err(_e) = lib.add_entry(entry) {
                         // TODO: Handle add_entry error
                     }
@@ -326,7 +326,7 @@ impl DbcLibrary {
                     break;
                 }
                 Err(_) => {
-                    println!("Failed to parse string starting in: {}", &i[0..1]);
+                    println!("Failed to parse string starting in: {:?}", &i[0..1]);
                     i = &i[1..];
                 }
             }
