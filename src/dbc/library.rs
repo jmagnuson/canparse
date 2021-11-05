@@ -355,6 +355,8 @@ impl DbcLibrary {
             }
         };
 
+        println!("Parsing entry: {:?}", entry);
+
         self.messages
             .entry(_id)
             .and_modify(|cur_entry| {
