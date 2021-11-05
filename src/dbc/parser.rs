@@ -83,7 +83,6 @@ named!(pub message_definition<&str, MessageDefinition>,
             FromStr::from_str) >>
         space >>
         sending_node: take_until_either!(" \t\r\n") >>
-        space0 >>
         line_ending >>
         ( MessageDefinition {
             id: id,
