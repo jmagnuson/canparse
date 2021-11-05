@@ -73,6 +73,7 @@ named!(pub message_definition<&str, MessageDefinition>,
         id: map_res!(
             digit,
             FromStr::from_str) >>
+        space >>
         text: take_until_either!("\t\r\n") >>
         line_ending >>
         ( MessageDefinition {
