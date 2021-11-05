@@ -315,6 +315,7 @@ impl DbcLibrary {
         while !i.is_empty() {
             match parser::entry(i) {
                 Ok((new_i, entry)) => {
+                    println!("String just parsed: {}", &i[0..(i.len() - new_i.len())]);
                     if let Err(_e) = lib.add_entry(entry) {
                         // TODO: Handle add_entry error
                     }
@@ -325,6 +326,7 @@ impl DbcLibrary {
                     break;
                 }
                 Err(_) => {
+                    println!("Failed to parse string starting in: {}", &i[0..1]);
                     i = &i[1..];
                 }
             }
@@ -336,6 +338,8 @@ impl DbcLibrary {
 
 impl DbcLibrary {
     pub fn add_entry(&mut self, entry: Entry) -> Result<(), String> {
+        println!("Parsed entry: {:?}", entry);
+
         let _id: u32 = *match entry {
             Entry::MessageDefinition(dbc::MessageDefinition { ref id, .. }) => id,
             Entry::MessageDescription(dbc::MessageDescription { ref id, .. }) => id,
@@ -354,8 +358,6 @@ impl DbcLibrary {
                 return Err(format!("Unsupported entry: {}.", entry));
             }
         };
-
-        println!("Parsing entry: {:?}", entry);
 
         self.messages
             .entry(_id)
