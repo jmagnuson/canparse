@@ -69,26 +69,13 @@ named!(pub bus_configuration<&str, BusConfiguration>,
 named!(pub message_definition<&str, MessageDefinition>,
     do_parse!(
         tag!("BO_")   >>
-        space >>
-        id: map_res!(
-            digit,
-            FromStr::from_str) >>
-        space >>
-        name: alphanumeric >>
-        space0 >>
-        tag!(":")   >>
-        space >>
-        len: map_res!(
-            digit,
-            FromStr::from_str) >>
-        space >>
-        sending_node: take_until_either!(" \t\r\n") >>
+        text: take_until_either!("\t\r\n") >>
         line_ending >>
         ( MessageDefinition {
-            id: id,
-            name: name.to_string(),
-            message_len: len,
-            sending_node: sending_node.to_string(),
+            id: 0,
+            name: "whatever".into(),
+            message_len: 8,
+            sending_node: "lol".into(),
         } )
     )
 );
