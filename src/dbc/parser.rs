@@ -69,6 +69,7 @@ named!(pub bus_configuration<&str, BusConfiguration>,
 named!(pub message_definition<&str, MessageDefinition>,
     do_parse!(
         tag!("BO_")   >>
+        space >>
         text: take_until_either!("\t\r\n") >>
         line_ending >>
         ( MessageDefinition {
