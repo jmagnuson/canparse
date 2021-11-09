@@ -432,6 +432,6 @@ mod tests {
         let unsupported = Entry::Version(Version("Don't care about version entry".to_string()));
         let res = dbclib.add_entry(unsupported);
 
-        assert!(res.is_err(), "Unsupported entry: Version".to_string());
+        assert!(res.is_err(), "Unsupported entry: Version");
     }
 }
