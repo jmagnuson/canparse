@@ -1,7 +1,7 @@
 //! Nom-based parsers for Entry types
 
 use super::*;
-use nom::{alphanumeric, digit, float, line_ending, space, space0};
+use nom::{digit, float, line_ending, space, space0, AsChar};
 use std::str::FromStr;
 
 // TODO: convert `tag!(" ")` to `space`
@@ -65,6 +65,10 @@ named!(pub bus_configuration<&str, BusConfiguration>,
     )
 );
 
+fn is_alphanumeric_extended(c: char) -> bool {
+    c.is_alphanum() || c == '_'
+}
+
 // FIXME: `space` isn't really correct since there should only be ONE (probably need alt)
 named!(pub message_definition<&str, MessageDefinition>,
     do_parse!(
@@ -74,7 +78,7 @@ named!(pub message_definition<&str, MessageDefinition>,
             digit,
             FromStr::from_str) >>
         space >>
-        name: alphanumeric >>
+        name: take_while!(is_alphanumeric_extended) >>
         space0 >>
         tag!(":")   >>
         space >>
@@ -86,10 +90,10 @@ named!(pub message_definition<&str, MessageDefinition>,
         space0 >>
         line_ending >>
         ( MessageDefinition {
-            id: id,
-            name: name.to_string(),
+            id,
+            name: name.into(),
             message_len: len,
-            sending_node: sending_node.to_string(),
+            sending_node: sending_node.into(),
         } )
     )
 );
