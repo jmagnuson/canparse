@@ -1,6 +1,6 @@
 # canparse
 
-[![crates.io](http://meritbadge.herokuapp.com/canparse)](https://crates.io/crates/canparse)
+[![crates.io](https://img.shields.io/crates/v/canparse.svg)](https://crates.io/crates/canparse)
 [![Build Status](https://img.shields.io/github/workflow/status/jmagnuson/canparse/Test/master)](https://github.com/jmagnuson/canparse/actions)
 [![codecov](https://codecov.io/gh/jmagnuson/canparse/branch/master/graph/badge.svg)](https://codecov.io/gh/jmagnuson/canparse)
 
