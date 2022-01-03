@@ -70,6 +70,23 @@ impl PgnLibrary {
         Self::from_encoded_dbc_file(path, ISO_8859_1)
     }
 
+    /// Convenience function for loading an entire DBC file from buffer into a returned `PgnLibrary`.  This
+    /// function ignores unparseable lines as well as `Entry` variants which don't apply to
+    /// `PgnLibrary` (such as `Entry::Version`).  Fails on `io::Error`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use canparse::pgn::PgnLibrary;
+    ///
+    /// let lib: PgnLibrary = PgnLibrary::from_buffer(buffer).unwrap();
+    ///
+    /// ```
+    pub fn from_buffer(buffer: &[u8]) -> io::Result<Self>
+    {
+        Self::from_not_encoded_buffer(buffer)
+    }
+
     /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`, using
     /// a specified `Encoding` codec. This function ignores unparseable lines as well as `Entry`
     /// variants which don't apply to `PgnLibrary` (such as `Entry::Version`).
@@ -110,6 +127,40 @@ impl PgnLibrary {
             })?;
 
         let mut i = data.as_str();
+        while !i.is_empty() {
+            match nomparse::entry(i) {
+                Ok((new_i, entry)) => {
+                    if let Err(_e) = lib.add_entry(entry) {
+                        // TODO: Handle add_entry error
+                    }
+                    i = new_i;
+                }
+                // FIXME: handling `IResult::Err`s could be better
+                Err(nom::Err::Incomplete(_)) => {
+                    break;
+                }
+                Err(_) => {
+                    i = &i[1..];
+                }
+            }
+        }
+
+        Ok(lib)
+    }
+
+    #[doc(hidden)]
+    pub fn from_not_encoded_buffer(buffer: &[u8]) -> io::Result<Self>
+    {
+        let mut lib = PgnLibrary::default();
+
+        let mut i: &str = "";
+        let parsed_string_result = std::str::from_utf8(buffer);
+        match parsed_string_result {
+            Ok(parsed_string) => i = parsed_string,
+            Err(_) => {
+                // TODO: Handle from_utf8 error
+            }
+        }
         while !i.is_empty() {
             match nomparse::entry(i) {
                 Ok((new_i, entry)) => {
