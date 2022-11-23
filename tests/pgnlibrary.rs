@@ -7,7 +7,7 @@ fn pgnlib_build_parse() {
     let lib = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
 
     // Pull signal definition for engine speed
-    let enginespeed_def: &SpnDefinition = lib.get_spn("Engine_Speed").unwrap();
+    let enginespeed_def: &SpnDefinition = lib.get_signal("Engine_Speed").unwrap();
 
     // Parse frame containing engine speed
     let msg: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];

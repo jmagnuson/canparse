@@ -39,15 +39,15 @@ pub trait FromDbc {
 #[derive(Debug, PartialEq, Clone)]
 pub struct PgnLibrary {
     last_id: u32,
-    pgns: HashMap<u32, PgnDefinition>,
+    frames: HashMap<u32, FrameDefinition>,
 }
 
 impl PgnLibrary {
     /// Creates a new `PgnLibrary` instance given an existing lookup table.
-    pub fn new(pgns: HashMap<u32, PgnDefinition>) -> Self {
+    pub fn new(frames: HashMap<u32, FrameDefinition>) -> Self {
         PgnLibrary {
             last_id: 0,
-            pgns: pgns,
+            frames,
         }
     }
 
@@ -178,16 +178,13 @@ impl PgnLibrary {
             }
         };
 
-        // CanId{ DP, PF, PS, SA } => Pgn{ PF, PS }
-        let pgn = (_id >> 8) & 0x1FFFF;
-
         self.last_id = _id;
-        match self.pgns.entry(pgn) {
+        match self.frames.entry(_id) {
             HashMapEntry::Occupied(mut existing) => {
                 existing.get_mut().merge_entry(entry).unwrap();
             }
             HashMapEntry::Vacant(vacant) => {
-                vacant.insert(PgnDefinition::from_entry(entry).unwrap());
+                vacant.insert(FrameDefinition::from_entry(entry).unwrap());
             }
         }
 
@@ -195,13 +192,13 @@ impl PgnLibrary {
     }
 
     /// Returns a `PgnDefinition` entry reference, if it exists.
-    pub fn get_pgn(&self, pgn: u32) -> Option<&PgnDefinition> {
-        self.pgns.get(&pgn)
+    pub fn get_frame(&self, frame_id: u32) -> Option<&FrameDefinition> {
+        self.frames.get(&frame_id)
     }
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
-    pub fn get_spn(&self, name: &str) -> Option<&SpnDefinition> {
-        self.pgns
+    pub fn get_signal(&self, name: &str) -> Option<&SpnDefinition> {
+        self.frames
             .iter()
             .filter_map(|pgn| pgn.1.spns.get(name))
             .next()
@@ -216,31 +213,28 @@ impl Default for PgnLibrary {
 
 /// Parameter Group Number definition
 #[derive(Debug, PartialEq, Clone)]
-pub struct PgnDefinition {
-    pgn: u32,
-    pgn_long: u32,
+pub struct FrameDefinition {
+    id: u32,
     name_abbrev: String,
     description: String,
     length: u32,
     spns: HashMap<String, SpnDefinition>,
 }
 
-impl PgnDefinition {
+impl FrameDefinition {
     pub fn new(
-        pgn: u32,
-        pgn_long: u32,
+        id: u32,
         name_abbrev: String,
         description: String,
         length: u32,
         spns: HashMap<String, SpnDefinition>,
     ) -> Self {
-        PgnDefinition {
-            pgn: pgn,
-            pgn_long: pgn_long,
-            name_abbrev: name_abbrev,
-            description: description,
-            length: length,
-            spns: spns,
+        FrameDefinition {
+            id,
+            name_abbrev,
+            description,
+            length,
+            spns,
         }
     }
 }
@@ -322,7 +316,7 @@ impl From<DefinitionErrorKind> for ParseDefinitionError {
     }
 }
 
-impl FromStr for PgnDefinition {
+impl FromStr for FrameDefinition {
     type Err = ParseDefinitionError;
 
     /// `&str` -> `PgnDefinition` via `dbc::Entry` (though probably won't be used).
@@ -336,7 +330,7 @@ impl FromStr for PgnDefinition {
     }
 }
 
-impl FromDbc for PgnDefinition {
+impl FromDbc for FrameDefinition {
     type Err = ParseDefinitionError;
 
     fn from_entry(entry: Entry) -> Result<Self, Self::Err>
@@ -347,9 +341,8 @@ impl FromDbc for PgnDefinition {
             Entry::MessageDefinition(MessageDefinition { id, name, .. }) => {
                 let pgn_long = id;
                 let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(
+                Ok(FrameDefinition::new(
                     pgn,
-                    pgn_long,
                     name,
                     "".to_string(),
                     0,
@@ -359,11 +352,8 @@ impl FromDbc for PgnDefinition {
             Entry::MessageDescription(MessageDescription {
                 id, description, ..
             }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(
-                    pgn,
-                    pgn_long,
+                Ok(FrameDefinition::new(
+                    id,
                     "".to_string(),
                     description,
                     0,
@@ -371,11 +361,9 @@ impl FromDbc for PgnDefinition {
                 ))
             }
             Entry::MessageAttribute(MessageAttribute { id, .. }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
-                Ok(PgnDefinition::new(
-                    pgn,
-                    pgn_long,
+
+                Ok(FrameDefinition::new(
+                    id,
                     "".to_string(),
                     "".to_string(),
                     0,
@@ -391,28 +379,19 @@ impl FromDbc for PgnDefinition {
             Entry::MessageDefinition(MessageDefinition {
                 id, message_len, ..
             }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn;
-                self.pgn_long = pgn_long;
+                self.id = id;
                 self.length = message_len;
                 Ok(())
             }
             Entry::MessageDescription(MessageDescription {
                 id, description, ..
             }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn;
-                self.pgn_long = pgn_long;
+                self.id = id;
                 self.description = description;
                 Ok(())
             }
             Entry::MessageAttribute(MessageAttribute { id, .. }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
-                self.pgn = pgn;
-                self.pgn_long = pgn_long;
+                self.id = id;
                 Ok(())
             }
             Entry::SignalDefinition(wrapped) => {
@@ -854,14 +833,14 @@ mod tests {
 
     #[test]
     fn default_pgnlibrary() {
-        assert_eq!(PGNLIB_EMPTY.pgns.len(), 0);
+        assert_eq!(PGNLIB_EMPTY.frames.len(), 0);
     }
 
     #[test]
     fn get_spndefinition() {
         assert_eq!(
             *PGNLIB_ONE
-                .get_pgn(0xF004)
+                .get_frame(0xF004)
                 .expect("failed to get PgnDefinition from PgnLibrary")
                 .spns
                 .get("Engine_Speed")
