@@ -203,6 +203,10 @@ impl PgnLibrary {
             .filter_map(|pgn| pgn.1.spns.get(name))
             .next()
     }
+
+    pub fn get_frame_ids(&self) -> Vec<u32> {
+        return self.frames.keys().cloned().collect();
+    }
 }
 
 impl Default for PgnLibrary {
