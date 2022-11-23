@@ -204,7 +204,7 @@ impl DbcLibrary {
             .next()
     }
 
-    pub fn get_frame_ids(self) -> Vec<u32> {
+    pub fn get_frame_ids(&self) -> Vec<u32> {
         return self.frames.keys().cloned().collect();
     }
 }
