@@ -4,13 +4,13 @@ extern crate canparse;
 
 extern crate socketcan;
 
-use canparse::pgn::*;
+use canparse::dbc::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion as Bencher};
 
 use socketcan::CANFrame;
 
 lazy_static! {
-    static ref SPNDEF: SpnDefinition = SpnDefinition::new(
+    static ref SPNDEF: SignalDesignation = SignalDesignation::new(
         "Engine_Speed".to_string(),
         190,
         2364539904,

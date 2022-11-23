@@ -37,30 +37,30 @@ pub trait FromDbc {
 
 /// A library used to translate CAN signals into desired values.
 #[derive(Debug, PartialEq, Clone)]
-pub struct PgnLibrary {
+pub struct DbcLibrary {
     last_id: u32,
     frames: HashMap<u32, FrameDefinition>,
 }
 
-impl PgnLibrary {
-    /// Creates a new `PgnLibrary` instance given an existing lookup table.
+impl DbcLibrary {
+    /// Creates a new `DbcLibrary` instance given an existing lookup table.
     pub fn new(frames: HashMap<u32, FrameDefinition>) -> Self {
-        PgnLibrary {
+        DbcLibrary {
             last_id: 0,
             frames,
         }
     }
 
-    /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`.  This
+    /// Convenience function for loading an entire DBC file into a returned `DbcLibrary`.  This
     /// function ignores unparseable lines as well as `Entry` variants which don't apply to
-    /// `PgnLibrary` (such as `Entry::Version`).  Fails on `io::Error`.
+    /// `DbcLibrary` (such as `Entry::Version`).  Fails on `io::Error`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use canparse::pgn::PgnLibrary;
+    /// use canparse::dbc::DbcLibrary;
     ///
-    /// let lib: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
+    /// let lib: DbcLibrary = DbcLibrary::from_dbc_file("./tests/data/sample.dbc").unwrap();
     ///
     /// ```
     pub fn from_dbc_file<P>(path: P) -> io::Result<Self>
@@ -70,9 +70,9 @@ impl PgnLibrary {
         Self::from_encoded_dbc_file(path, ISO_8859_1)
     }
 
-    /// Convenience function for loading an entire DBC file into a returned `PgnLibrary`, using
+    /// Convenience function for loading an entire DBC file into a returned `DbcLibrary`, using
     /// a specified `Encoding` codec. This function ignores unparseable lines as well as `Entry`
-    /// variants which don't apply to `PgnLibrary` (such as `Entry::Version`).
+    /// variants which don't apply to `DbcLibrary` (such as `Entry::Version`).
     ///
     /// This function is currently considered unstable and subject to change or removal.
     ///
@@ -82,11 +82,11 @@ impl PgnLibrary {
     /// extern crate canparse;
     /// extern crate encoding;
     ///
-    /// use canparse::pgn::PgnLibrary;
+    /// use canparse::Dbc::DbcLibrary;
     /// use encoding::Encoding;
     /// use encoding::all::ISO_8859_1;
     ///
-    /// let lib: PgnLibrary = PgnLibrary::from_encoded_dbc_file("./tests/data/sample.dbc",
+    /// let lib: DbcLibrary = DbcLibrary::from_encoded_dbc_file("./tests/data/sample.dbc",
     ///                                                         ISO_8859_1).unwrap();
     ///
     /// ```
@@ -96,7 +96,7 @@ impl PgnLibrary {
         P: AsRef<Path>,
         E: Encoding,
     {
-        let mut lib = PgnLibrary::default();
+        let mut lib = DbcLibrary::default();
 
         let data = File::open(path)
             .and_then(|mut f| {
@@ -131,7 +131,7 @@ impl PgnLibrary {
         Ok(lib)
     }
 
-    /// Converts/combines DBC `Entry` values into entries within `PgnLibrary`.  Different `Entry`
+    /// Converts/combines DBC `Entry` values into entries within `DbcLibrary`.  Different `Entry`
     /// variants can modify the same internal entry, hence the need for mutability.  This function
     /// is meant to be called when parsing lines in a `dbc` file.
     ///
@@ -142,12 +142,12 @@ impl PgnLibrary {
     /// use std::io::BufRead;
     /// use std::str::FromStr;
     /// use canparse::dbc::Entry;
-    /// use canparse::pgn::PgnLibrary;
+    /// use canparse::dbc::DbcLibrary;
     ///
-    /// let mut lib = PgnLibrary::new( HashMap::default() );
+    /// let mut lib = DbcLibrary::new( HashMap::default() );
     ///
     /// // File is ISO-8859-1 and needs to be converted before iterating
-    /// // with `lines`. `PgnLibrary::from_dbc_file` does this for you.
+    /// // with `lines`. `DbcLibrary::from_dbc_file` does this for you.
     /// let data: String = include_bytes!("../tests/data/sample.dbc")
     ///     .iter().map(|b| *b as char).collect();
     ///
@@ -191,27 +191,27 @@ impl PgnLibrary {
         Ok(())
     }
 
-    /// Returns a `PgnDefinition` entry reference, if it exists.
+    /// Returns a `DbcDefinition` entry reference, if it exists.
     pub fn get_frame(&self, frame_id: u32) -> Option<&FrameDefinition> {
         self.frames.get(&frame_id)
     }
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
-    pub fn get_signal(&self, name: &str) -> Option<&SpnDefinition> {
+    pub fn get_signal(&self, name: &str) -> Option<&SignalDesignation> {
         self.frames
             .iter()
-            .filter_map(|pgn| pgn.1.spns.get(name))
+            .filter_map(|pgn| pgn.1.signals.get(name))
             .next()
     }
 
-    pub fn get_frame_ids(&self) -> Vec<u32> {
+    pub fn get_frame_ids(self) -> Vec<u32> {
         return self.frames.keys().cloned().collect();
     }
 }
 
-impl Default for PgnLibrary {
+impl Default for DbcLibrary {
     fn default() -> Self {
-        PgnLibrary::new(HashMap::default())
+        DbcLibrary::new(HashMap::default())
     }
 }
 
@@ -222,7 +222,7 @@ pub struct FrameDefinition {
     name_abbrev: String,
     description: String,
     length: u32,
-    spns: HashMap<String, SpnDefinition>,
+    signals: HashMap<String, SignalDesignation>,
 }
 
 impl FrameDefinition {
@@ -231,18 +231,22 @@ impl FrameDefinition {
         name_abbrev: String,
         description: String,
         length: u32,
-        spns: HashMap<String, SpnDefinition>,
+        signals: HashMap<String, SignalDesignation>,
     ) -> Self {
         FrameDefinition {
             id,
             name_abbrev,
             description,
             length,
-            spns,
+            signals,
         }
     }
+
+    pub fn get_signals(&self) -> Vec<SignalDesignation> {
+        return self.signals.values().cloned().collect();
+    }
 }
-// TODO: PgnDefinition Builder pattern
+// TODO: DbcDefinition Builder pattern
 
 /// Error returned on failure to parse `*Definition` type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -323,7 +327,7 @@ impl From<DefinitionErrorKind> for ParseDefinitionError {
 impl FromStr for FrameDefinition {
     type Err = ParseDefinitionError;
 
-    /// `&str` -> `PgnDefinition` via `dbc::Entry` (though probably won't be used).
+    /// `&str` -> `DbcDefinition` via `dbc::Entry` (though probably won't be used).
     fn from_str(line: &str) -> Result<Self, Self::Err>
     where
         Self: Sized + FromDbc,
@@ -343,10 +347,8 @@ impl FromDbc for FrameDefinition {
     {
         match entry {
             Entry::MessageDefinition(MessageDefinition { id, name, .. }) => {
-                let pgn_long = id;
-                let pgn = pgn_long & 0x1FFFF;
                 Ok(FrameDefinition::new(
-                    pgn,
+                    id,
                     name,
                     "".to_string(),
                     0,
@@ -399,27 +401,27 @@ impl FromDbc for FrameDefinition {
                 Ok(())
             }
             Entry::SignalDefinition(wrapped) => {
-                if self.spns.contains_key(&wrapped.name) {
-                    (*self.spns.get_mut(&wrapped.name).unwrap())
+                if self.signals.contains_key(&wrapped.name) {
+                    (*self.signals.get_mut(&wrapped.name).unwrap())
                         .merge_entry(Entry::SignalDefinition(wrapped))
                         .unwrap();
                 } else {
-                    self.spns.insert(
+                    self.signals.insert(
                         wrapped.name.clone(),
-                        SpnDefinition::from_entry(Entry::SignalDefinition(wrapped)).unwrap(),
+                        SignalDesignation::from_entry(Entry::SignalDefinition(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
             }
             Entry::SignalDescription(wrapped) => {
-                if self.spns.contains_key(&wrapped.signal_name) {
-                    (*self.spns.get_mut(&wrapped.signal_name).unwrap())
+                if self.signals.contains_key(&wrapped.signal_name) {
+                    (*self.signals.get_mut(&wrapped.signal_name).unwrap())
                         .merge_entry(Entry::SignalDescription(wrapped))
                         .unwrap();
                 } else {
-                    self.spns.insert(
+                    self.signals.insert(
                         wrapped.signal_name.clone(),
-                        SpnDefinition::from_entry(Entry::SignalDescription(wrapped)).unwrap(),
+                        SignalDesignation::from_entry(Entry::SignalDescription(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
@@ -429,14 +431,14 @@ impl FromDbc for FrameDefinition {
                     // Skip non-SPN attributes
                     return Ok(());
                 }
-                if self.spns.contains_key(&wrapped.signal_name) {
-                    (*self.spns.get_mut(&wrapped.signal_name).unwrap())
+                if self.signals.contains_key(&wrapped.signal_name) {
+                    (*self.signals.get_mut(&wrapped.signal_name).unwrap())
                         .merge_entry(Entry::SignalAttribute(wrapped))
                         .unwrap();
                 } else {
-                    self.spns.insert(
+                    self.signals.insert(
                         wrapped.signal_name.clone(),
-                        SpnDefinition::from_entry(Entry::SignalAttribute(wrapped)).unwrap(),
+                        SignalDesignation::from_entry(Entry::SignalAttribute(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
@@ -448,7 +450,7 @@ impl FromDbc for FrameDefinition {
 
 /// Suspect Parameter Number definition
 #[derive(Debug, PartialEq, Clone)]
-pub struct SpnDefinition {
+pub struct SignalDesignation {
     name: String,
     pub number: usize,
     id: u32,
@@ -520,7 +522,7 @@ pub trait ParseMessage<N> {
     fn parser(&self) -> Box<dyn Fn(N) -> Option<f32>>;
 }
 
-impl SpnDefinition {
+impl SignalDesignation {
     /// Return new `SpnDefinition` given the definition parameters.
     pub fn new(
         name: String,
@@ -537,7 +539,7 @@ impl SpnDefinition {
         max_value: f32,
         units: String,
     ) -> Self {
-        SpnDefinition {
+        SignalDesignation {
             name: name,
             number: number,
             id: id,
@@ -555,7 +557,7 @@ impl SpnDefinition {
     }
 }
 
-impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
+impl<'a> ParseMessage<&'a [u8; 8]> for SignalDesignation {
     fn parse_message(&self, msg: &[u8; 8]) -> Option<f32> {
         parse_array(
             self.bit_len,
@@ -581,7 +583,7 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SpnDefinition {
     }
 }
 
-impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
+impl<'a> ParseMessage<&'a [u8]> for SignalDesignation {
     fn parse_message(&self, msg: &[u8]) -> Option<f32> {
         parse_message(
             self.bit_len,
@@ -608,7 +610,7 @@ impl<'a> ParseMessage<&'a [u8]> for SpnDefinition {
 }
 
 #[cfg(feature = "use-socketcan")]
-impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
+impl<'a> ParseMessage<&'a CANFrame> for SignalDesignation {
     fn parse_message(&self, frame: &CANFrame) -> Option<f32> {
         let msg = &frame.data();
         parse_message(
@@ -637,7 +639,7 @@ impl<'a> ParseMessage<&'a CANFrame> for SpnDefinition {
     }
 }
 
-impl FromStr for SpnDefinition {
+impl FromStr for SignalDesignation {
     type Err = ParseDefinitionError;
 
     /// `&str` -> `SpnDefinition` via `dbc::Entry` (though probably won't be used).
@@ -651,7 +653,7 @@ impl FromStr for SpnDefinition {
     }
 }
 
-impl FromDbc for SpnDefinition {
+impl FromDbc for SignalDesignation {
     type Err = ParseDefinitionError;
 
     fn from_entry(entry: Entry) -> Result<Self, Self::Err>
@@ -717,7 +719,7 @@ impl FromDbc for SpnDefinition {
     }
 }
 
-impl From<SignalDefinition> for SpnDefinition {
+impl From<SignalDefinition> for SignalDesignation {
     fn from(
         SignalDefinition {
             name,
@@ -733,7 +735,7 @@ impl From<SignalDefinition> for SpnDefinition {
             ..
         }: SignalDefinition,
     ) -> Self {
-        SpnDefinition::new(
+        SignalDesignation::new(
             name,
             0,
             0, // TODO: Some()?
@@ -750,7 +752,7 @@ impl From<SignalDefinition> for SpnDefinition {
         )
     }
 }
-impl From<SignalDescription> for SpnDefinition {
+impl From<SignalDescription> for SignalDesignation {
     fn from(
         SignalDescription {
             id,
@@ -758,7 +760,7 @@ impl From<SignalDescription> for SpnDefinition {
             description,
         }: SignalDescription,
     ) -> Self {
-        SpnDefinition::new(
+        SignalDesignation::new(
             signal_name,
             0,
             id,
@@ -775,7 +777,7 @@ impl From<SignalDescription> for SpnDefinition {
         )
     }
 }
-impl From<SignalAttribute> for SpnDefinition {
+impl From<SignalAttribute> for SignalDesignation {
     fn from(
         SignalAttribute {
             id,
@@ -784,7 +786,7 @@ impl From<SignalAttribute> for SpnDefinition {
             ..
         }: SignalAttribute,
     ) -> Self {
-        SpnDefinition::new(
+        SignalDesignation::new(
             signal_name,
             value.parse().unwrap(),
             id,
@@ -804,14 +806,14 @@ impl From<SignalAttribute> for SpnDefinition {
 
 #[cfg(test)]
 mod tests {
-    use crate::pgn::*;
+    use crate::parser::*;
     use approx::assert_relative_eq;
 
     lazy_static! {
-        static ref PGNLIB_EMPTY: PgnLibrary = PgnLibrary::default();
-        static ref PGNLIB_ONE: PgnLibrary = PgnLibrary::from_dbc_file("./tests/data/sample.dbc")
+        static ref PGNLIB_EMPTY: DbcLibrary = DbcLibrary::default();
+        static ref PGNLIB_ONE: DbcLibrary = DbcLibrary::from_dbc_file("./tests/data/sample.dbc")
             .expect("Failed to create PgnLibrary from file");
-        static ref SPNDEF: SpnDefinition = SpnDefinition::new(
+        static ref SPNDEF: SignalDesignation = SignalDesignation::new(
             "Engine_Speed".to_string(),
             190,
             2364539904,
@@ -826,7 +828,7 @@ mod tests {
             8031.88,
             "rpm".to_string()
         );
-        static ref SPNDEF_BE: SpnDefinition = {
+        static ref SPNDEF_BE: SignalDesignation = {
             let mut _spndef = SPNDEF.clone();
             _spndef.little_endian = false;
             _spndef
@@ -846,7 +848,7 @@ mod tests {
             *PGNLIB_ONE
                 .get_frame(0xF004)
                 .expect("failed to get PgnDefinition from PgnLibrary")
-                .spns
+                .signals
                 .get("Engine_Speed")
                 .expect("failed to get SpnDefinition from PgnDefinition"),
             *SPNDEF
@@ -855,7 +857,7 @@ mod tests {
 
     #[test]
     fn unsupported_entry() {
-        let mut pgnlib: PgnLibrary = PgnLibrary::default();
+        let mut pgnlib: DbcLibrary = DbcLibrary::default();
         let unsupported = Entry::Version(Version("Don't care about version entry".to_string()));
         let res = pgnlib.add_entry(unsupported);
 

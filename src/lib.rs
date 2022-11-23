@@ -49,4 +49,4 @@ extern crate nom;
 extern crate socketcan;
 
 pub mod dbc;
-pub mod pgn;
+pub mod parser;

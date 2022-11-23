@@ -2,11 +2,11 @@
 extern crate lazy_static;
 extern crate canparse;
 
-use canparse::pgn::*;
+use canparse::parser::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion as Bencher};
 
 lazy_static! {
-    static ref SPNDEF: SpnDefinition = SpnDefinition::new(
+    static ref SPNDEF: SignalDesignation = SignalDesignation::new(
         "Engine_Speed".to_string(),
         190,
         2364539904,
