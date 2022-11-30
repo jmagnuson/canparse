@@ -82,7 +82,7 @@ impl DbcLibrary {
     /// extern crate canparse;
     /// extern crate encoding;
     ///
-    /// use canparse::Dbc::DbcLibrary;
+    /// use canparse::dbc::DbcLibrary;
     /// use encoding::Encoding;
     /// use encoding::all::ISO_8859_1;
     ///
@@ -843,10 +843,10 @@ mod tests {
     }
 
     #[test]
-    fn get_spndefinition() {
+    fn get_signal_definition() {
         assert_eq!(
             *PGNLIB_ONE
-                .get_frame(0xF004)
+                .get_frame(2364539904)
                 .expect("failed to get PgnDefinition from PgnLibrary")
                 .signals
                 .get("Engine_Speed")

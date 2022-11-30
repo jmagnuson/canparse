@@ -151,7 +151,7 @@ named!(pub signal_definition<&str, SignalDefinition>,
         name: take_until_either!(" \t") >>
         space >>
         tag!(":") >>
-        space >>
+        space0 >>
         start_bit: map_res!(
             digit,
             FromStr::from_str) >>
