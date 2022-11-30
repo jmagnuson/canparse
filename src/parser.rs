@@ -451,9 +451,9 @@ impl FromDbc for FrameDefinition {
 /// Suspect Parameter Number definition
 #[derive(Debug, PartialEq, Clone)]
 pub struct SignalDesignation {
-    name: String,
+    pub name: String,
     pub number: usize,
-    id: u32,
+    pub id: u32,
     description: String,
     start_bit: usize,
     bit_len: usize,
