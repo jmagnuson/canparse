@@ -161,9 +161,9 @@ impl DbcLibrary {
         use std::collections::hash_map::Entry as HashMapEntry;
 
         let _id: u32 = *match entry {
-            Entry::MessageDefinition(MessageDefinition { ref id, .. }) => id,
-            Entry::MessageDescription(MessageDescription { ref id, .. }) => id,
-            Entry::MessageAttribute(MessageAttribute { ref id, .. }) => id,
+            Entry::MessageDefinition(DbcMessageDefinition { ref id, .. }) => id,
+            Entry::MessageDescription(DbcMessageDescription { ref id, .. }) => id,
+            Entry::MessageAttribute(DbcMessageAttribute { ref id, .. }) => id,
             Entry::SignalDefinition(..) => {
                 // no id, and by definition must follow MessageDefinition
                 if self.last_id == 0 {
@@ -171,8 +171,8 @@ impl DbcLibrary {
                 }
                 &self.last_id
             }
-            Entry::SignalDescription(SignalDescription { ref id, .. }) => id,
-            Entry::SignalAttribute(SignalAttribute { ref id, .. }) => id,
+            Entry::SignalDescription(DbcSignalDescription { ref id, .. }) => id,
+            Entry::SignalAttribute(DbcSignalAttribute { ref id, .. }) => id,
             _ => {
                 return Err(format!("Unsupported entry: {}.", entry));
             }
@@ -197,7 +197,7 @@ impl DbcLibrary {
     }
 
     /// Returns a `SpnDefinition` entry reference, if it exists.
-    pub fn get_signal(&self, name: &str) -> Option<&SignalDesignation> {
+    pub fn get_signal(&self, name: &str) -> Option<&SignalDefinition> {
         self.frames
             .iter()
             .filter_map(|pgn| pgn.1.signals.get(name))
@@ -222,7 +222,7 @@ pub struct FrameDefinition {
     name_abbrev: String,
     description: String,
     length: u32,
-    signals: HashMap<String, SignalDesignation>,
+    signals: HashMap<String, SignalDefinition>,
 }
 
 impl FrameDefinition {
@@ -231,7 +231,7 @@ impl FrameDefinition {
         name_abbrev: String,
         description: String,
         length: u32,
-        signals: HashMap<String, SignalDesignation>,
+        signals: HashMap<String, SignalDefinition>,
     ) -> Self {
         FrameDefinition {
             id,
@@ -242,7 +242,7 @@ impl FrameDefinition {
         }
     }
 
-    pub fn get_signals(&self) -> Vec<SignalDesignation> {
+    pub fn get_signals(&self) -> Vec<SignalDefinition> {
         return self.signals.values().cloned().collect();
     }
 }
@@ -346,7 +346,7 @@ impl FromDbc for FrameDefinition {
         Self: Sized,
     {
         match entry {
-            Entry::MessageDefinition(MessageDefinition { id, name, .. }) => {
+            Entry::MessageDefinition(DbcMessageDefinition { id, name, .. }) => {
                 Ok(FrameDefinition::new(
                     id,
                     name,
@@ -355,7 +355,7 @@ impl FromDbc for FrameDefinition {
                     HashMap::new(),
                 ))
             }
-            Entry::MessageDescription(MessageDescription {
+            Entry::MessageDescription(DbcMessageDescription {
                 id, description, ..
             }) => {
                 Ok(FrameDefinition::new(
@@ -366,7 +366,7 @@ impl FromDbc for FrameDefinition {
                     HashMap::new(),
                 ))
             }
-            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
+            Entry::MessageAttribute(DbcMessageAttribute { id, .. }) => {
 
                 Ok(FrameDefinition::new(
                     id,
@@ -382,21 +382,21 @@ impl FromDbc for FrameDefinition {
 
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
-            Entry::MessageDefinition(MessageDefinition {
+            Entry::MessageDefinition(DbcMessageDefinition {
                 id, message_len, ..
             }) => {
                 self.id = id;
                 self.length = message_len;
                 Ok(())
             }
-            Entry::MessageDescription(MessageDescription {
+            Entry::MessageDescription(DbcMessageDescription {
                 id, description, ..
             }) => {
                 self.id = id;
                 self.description = description;
                 Ok(())
             }
-            Entry::MessageAttribute(MessageAttribute { id, .. }) => {
+            Entry::MessageAttribute(DbcMessageAttribute { id, .. }) => {
                 self.id = id;
                 Ok(())
             }
@@ -408,7 +408,7 @@ impl FromDbc for FrameDefinition {
                 } else {
                     self.signals.insert(
                         wrapped.name.clone(),
-                        SignalDesignation::from_entry(Entry::SignalDefinition(wrapped)).unwrap(),
+                        SignalDefinition::from_entry(Entry::SignalDefinition(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
@@ -421,7 +421,7 @@ impl FromDbc for FrameDefinition {
                 } else {
                     self.signals.insert(
                         wrapped.signal_name.clone(),
-                        SignalDesignation::from_entry(Entry::SignalDescription(wrapped)).unwrap(),
+                        SignalDefinition::from_entry(Entry::SignalDescription(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
@@ -438,7 +438,7 @@ impl FromDbc for FrameDefinition {
                 } else {
                     self.signals.insert(
                         wrapped.signal_name.clone(),
-                        SignalDesignation::from_entry(Entry::SignalAttribute(wrapped)).unwrap(),
+                        SignalDefinition::from_entry(Entry::SignalAttribute(wrapped)).unwrap(),
                     );
                 }
                 Ok(())
@@ -450,7 +450,7 @@ impl FromDbc for FrameDefinition {
 
 /// Suspect Parameter Number definition
 #[derive(Debug, PartialEq, Clone)]
-pub struct SignalDesignation {
+pub struct SignalDefinition {
     pub name: String,
     pub number: usize,
     pub id: u32,
@@ -530,8 +530,8 @@ pub trait ParseMessage<N> {
     fn parser(&self) -> Box<dyn Fn(N) -> Option<f32>>;
 }
 
-impl SignalDesignation {
-    /// Return new `SpnDefinition` given the definition parameters.
+impl SignalDefinition {
+    /// Return new `SignalDefinition` given the definition parameters.
     pub fn new(
         name: String,
         number: usize,
@@ -547,7 +547,7 @@ impl SignalDesignation {
         max_value: f32,
         units: String,
     ) -> Self {
-        SignalDesignation {
+        SignalDefinition {
             name: name,
             number: number,
             id: id,
@@ -565,7 +565,7 @@ impl SignalDesignation {
     }
 }
 
-impl<'a> ParseMessage<&'a [u8; 8]> for SignalDesignation {
+impl<'a> ParseMessage<&'a [u8; 8]> for SignalDefinition {
     fn parse_message(&self, msg: &[u8; 8]) -> Option<f32> {
         parse_array(
             self.bit_len,
@@ -591,7 +591,7 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SignalDesignation {
     }
 }
 
-impl<'a> ParseMessage<Vec<u8>> for SignalDesignation {
+impl<'a> ParseMessage<Vec<u8>> for SignalDefinition {
     fn parse_message(&self, msg: Vec<u8>) -> Option<f32> {
         parse_message(
             self.bit_len,
@@ -618,7 +618,7 @@ impl<'a> ParseMessage<Vec<u8>> for SignalDesignation {
 }
 
 #[cfg(feature = "use-socketcan")]
-impl<'a> ParseMessage<&'a CANFrame> for SignalDesignation {
+impl<'a> ParseMessage<&'a CANFrame> for SignalDefinition {
     fn parse_message(&self, frame: &CANFrame) -> Option<f32> {
         let msg = &frame.data();
         parse_message(
@@ -647,7 +647,7 @@ impl<'a> ParseMessage<&'a CANFrame> for SignalDesignation {
     }
 }
 
-impl FromStr for SignalDesignation {
+impl FromStr for SignalDefinition {
     type Err = ParseDefinitionError;
 
     /// `&str` -> `SpnDefinition` via `dbc::Entry` (though probably won't be used).
@@ -661,7 +661,7 @@ impl FromStr for SignalDesignation {
     }
 }
 
-impl FromDbc for SignalDesignation {
+impl FromDbc for SignalDefinition {
     type Err = ParseDefinitionError;
 
     fn from_entry(entry: Entry) -> Result<Self, Self::Err>
@@ -678,7 +678,7 @@ impl FromDbc for SignalDesignation {
 
     fn merge_entry(&mut self, entry: Entry) -> Result<(), Self::Err> {
         match entry {
-            Entry::SignalDefinition(SignalDefinition {
+            Entry::SignalDefinition(DbcSignalDefinition {
                 name,
                 start_bit,
                 bit_len,
@@ -701,7 +701,7 @@ impl FromDbc for SignalDesignation {
                 self.units = units;
                 Ok(())
             }
-            Entry::SignalDescription(SignalDescription {
+            Entry::SignalDescription(DbcSignalDescription {
                 id,
                 signal_name,
                 description,
@@ -711,7 +711,7 @@ impl FromDbc for SignalDesignation {
                 self.description = description;
                 Ok(())
             }
-            Entry::SignalAttribute(SignalAttribute {
+            Entry::SignalAttribute(DbcSignalAttribute {
                 id,
                 signal_name,
                 value,
@@ -727,9 +727,9 @@ impl FromDbc for SignalDesignation {
     }
 }
 
-impl From<SignalDefinition> for SignalDesignation {
+impl From<DbcSignalDefinition> for SignalDefinition {
     fn from(
-        SignalDefinition {
+        DbcSignalDefinition {
             name,
             start_bit,
             bit_len,
@@ -741,9 +741,9 @@ impl From<SignalDefinition> for SignalDesignation {
             max_value,
             units,
             ..
-        }: SignalDefinition,
+        }: DbcSignalDefinition,
     ) -> Self {
-        SignalDesignation::new(
+        SignalDefinition::new(
             name,
             0,
             0, // TODO: Some()?
@@ -760,15 +760,15 @@ impl From<SignalDefinition> for SignalDesignation {
         )
     }
 }
-impl From<SignalDescription> for SignalDesignation {
+impl From<DbcSignalDescription> for SignalDefinition {
     fn from(
-        SignalDescription {
+        DbcSignalDescription {
             id,
             signal_name,
             description,
-        }: SignalDescription,
+        }: DbcSignalDescription,
     ) -> Self {
-        SignalDesignation::new(
+        SignalDefinition::new(
             signal_name,
             0,
             id,
@@ -785,16 +785,16 @@ impl From<SignalDescription> for SignalDesignation {
         )
     }
 }
-impl From<SignalAttribute> for SignalDesignation {
+impl From<DbcSignalAttribute> for SignalDefinition {
     fn from(
-        SignalAttribute {
+        DbcSignalAttribute {
             id,
             signal_name,
             value,
             ..
-        }: SignalAttribute,
+        }: DbcSignalAttribute,
     ) -> Self {
-        SignalDesignation::new(
+        SignalDefinition::new(
             signal_name,
             value.parse().unwrap(),
             id,
@@ -821,7 +821,7 @@ mod tests {
         static ref PGNLIB_EMPTY: DbcLibrary = DbcLibrary::default();
         static ref PGNLIB_ONE: DbcLibrary = DbcLibrary::from_dbc_file("./tests/data/sample.dbc")
             .expect("Failed to create PgnLibrary from file");
-        static ref SPNDEF: SignalDesignation = SignalDesignation::new(
+        static ref SPNDEF: SignalDefinition = SignalDefinition::new(
             "Engine_Speed".to_string(),
             190,
             2364539904,
@@ -836,7 +836,7 @@ mod tests {
             8031.88,
             "rpm".to_string()
         );
-        static ref SPNDEF_BE: SignalDesignation = {
+        static ref SPNDEF_BE: SignalDefinition = {
             let mut _spndef = SPNDEF.clone();
             _spndef.little_endian = false;
             _spndef
@@ -866,7 +866,7 @@ mod tests {
     #[test]
     fn unsupported_entry() {
         let mut pgnlib: DbcLibrary = DbcLibrary::default();
-        let unsupported = Entry::Version(Version("Don't care about version entry".to_string()));
+        let unsupported = Entry::Version(DbcVersion("Don't care about version entry".to_string()));
         let res = pgnlib.add_entry(unsupported);
 
         assert!(res.is_err(), "Unsupported entry: Version");

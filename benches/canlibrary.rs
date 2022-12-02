@@ -6,7 +6,7 @@ use canparse::parser::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion as Bencher};
 
 lazy_static! {
-    static ref SPNDEF: SignalDesignation = SignalDesignation::new(
+    static ref SPNDEF: SignalDefinition = SignalDefinition::new(
         "Engine_Speed".to_string(),
         190,
         2364539904,
@@ -32,15 +32,7 @@ fn bench_parse_array(b: &mut Bencher) {
 
 fn bench_parse_message(b: &mut Bencher) {
     b.bench_function("bench_parse_message", move |b| {
-        b.iter(|| black_box(SPNDEF.parse_message(&MSG[..]).unwrap()))
-    });
-}
-
-fn bench_parse_message_closure(b: &mut Bencher) {
-    let parse = SPNDEF.parser();
-
-    b.bench_function("bench_parse_message_closure", move |b| {
-        b.iter(|| black_box(parse(&MSG[..]).unwrap()))
+        b.iter(|| black_box(SPNDEF.parse_message(MSG[..].to_vec()).unwrap()))
     });
 }
 
@@ -48,7 +40,6 @@ criterion_group!(
     benches,
     bench_parse_array,
     bench_parse_message,
-    bench_parse_message_closure,
 );
 
 criterion_main!(benches);

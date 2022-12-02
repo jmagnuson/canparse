@@ -13,13 +13,13 @@
 //! implemented as folows:
 //!
 //! ```rust,no_run
-//! use canparse::parser::{DbcLibrary, SignalDesignation, ParseMessage};
+//! use canparse::parser::{DbcLibrary, SignalDefinition, ParseMessage};
 //!
-//! // Parse dbc file into PgnLibrary
+//! // Parse dbc file into DbcLibrary
 //! let lib = DbcLibrary::from_dbc_file("./j1939.dbc").unwrap();
 //!
 //! // Pull signal definition for engine speed
-//! let enginespeed_def: &SignalDesignation = lib
+//! let enginespeed_def: &SignalDefinition = lib
 //!     .get_signal("Engine_Speed").unwrap();
 //!
 //! // Parse frame containing engine speed

@@ -13,13 +13,13 @@ pub mod parser;
 pub use self::library::DbcLibrary;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Version(pub String);
+pub struct DbcVersion(pub String);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BusConfiguration(pub f32);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MessageDefinition {
+pub struct DbcMessageDefinition {
     pub id: u32,
     pub name: String,
     pub message_len: u32,
@@ -27,7 +27,7 @@ pub struct MessageDefinition {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MessageDescription {
+pub struct DbcMessageDescription {
     pub id: u32,
     // TODO: Remove this
     pub signal_name: String,
@@ -35,7 +35,7 @@ pub struct MessageDescription {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MessageAttribute {
+pub struct DbcMessageAttribute {
     pub name: String,
     pub id: u32,
     pub signal_name: String,
@@ -43,7 +43,7 @@ pub struct MessageAttribute {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SignalDefinition {
+pub struct DbcSignalDefinition {
     pub name: String,
     pub start_bit: usize,
     pub bit_len: usize,
@@ -58,14 +58,14 @@ pub struct SignalDefinition {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SignalDescription {
+pub struct DbcSignalDescription {
     pub id: u32,
     pub signal_name: String,
     pub description: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SignalAttribute {
+pub struct DbcSignalAttribute {
     pub name: String,
     pub id: u32,
     pub signal_name: String,
@@ -76,7 +76,7 @@ pub struct SignalAttribute {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Entry {
     /// `VERSION`
-    Version(Version),
+    Version(DbcVersion),
 
     /// BS_: <Speed>
     BusConfiguration(BusConfiguration),
@@ -87,18 +87,18 @@ pub enum Entry {
     // CanNodesDescription,
     // CanNodesAttribute,
     /// `BO_ [can id] [message name]: [message length] [sending node]`
-    MessageDefinition(MessageDefinition),
+    MessageDefinition(DbcMessageDefinition),
     /// `CM_ BO_ [can id] [signal name] "[description]"`
-    MessageDescription(MessageDescription),
+    MessageDescription(DbcMessageDescription),
     /// `BA_ "[attribute name]" BO_ [node|can id] [signal name] [attribute value];`
-    MessageAttribute(MessageAttribute),
+    MessageAttribute(DbcMessageAttribute),
 
     /// `SG_ [signal name] [...] : [start bit]|[length]@[endian][sign] [[min]|[max]] "[unit]" [receiving nodes]`
-    SignalDefinition(SignalDefinition),
+    SignalDefinition(DbcSignalDefinition),
     /// `CM_ SG_ [can id] [signal name] "[description]"`
-    SignalDescription(SignalDescription),
+    SignalDescription(DbcSignalDescription),
     /// `BA_ "[attribute name]" SG_ [node|can id] [signal name] [attribute value];`
-    SignalAttribute(SignalAttribute),
+    SignalAttribute(DbcSignalAttribute),
 
     // `CM_ [BU_|BO_|SG_] [can id] [signal name] "[description]"`
     // Description, -- flatten subtypes instead
@@ -345,14 +345,14 @@ mod tests {
         version,
         Version,
         "VERSION \"A version string\"\n",
-        Version("A version string".to_string())
+        DbcVersion("A version string".to_string())
     );
 
     test_entry!(
         message_definition,
         MessageDefinition,
         "BO_ 2364539904 EEC1 : 8 Vector__XXX\n",
-        MessageDefinition {
+        DbcMessageDefinition {
             id: 2364539904,
             name: "EEC1".to_string(),
             message_len: 8,
@@ -364,7 +364,7 @@ mod tests {
         message_description,
         MessageDescription,
         "CM_ BO_ 2364539904 \"Engine Controller\";\n",
-        MessageDescription {
+        DbcMessageDescription {
             id: 2364539904,
             signal_name: "".to_string(),
             description: "Engine Controller".to_string()
@@ -375,7 +375,7 @@ mod tests {
         message_attribute,
         MessageAttribute,
         "BA_ \"SingleFrame\" BO_ 2364539904 0;\n",
-        MessageAttribute {
+        DbcMessageAttribute {
             name: "SingleFrame".to_string(),
             signal_name: "".to_string(),
             id: 2364539904,
@@ -387,7 +387,7 @@ mod tests {
         signal_definition,
         SignalDefinition,
         " SG_ Engine_Speed : 24|16@1+ (0.125,0) [0|8031.88] \"rpm\" Vector__XXX\n",
-        SignalDefinition {
+        DbcSignalDefinition {
             name: "Engine_Speed".to_string(),
             start_bit: 24,
             bit_len: 16,
@@ -406,7 +406,7 @@ mod tests {
         signal_description,
         SignalDescription,
         "CM_ SG_ 2364539904 Engine_Speed \"A description for Engine speed.\";\n",
-        SignalDescription {
+        DbcSignalDescription {
             id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
             description: "A description for Engine speed.".to_string()
@@ -417,7 +417,7 @@ mod tests {
         signal_attribute,
         SignalAttribute,
         "BA_ \"SPN\" SG_ 2364539904 Engine_Speed 190;\n",
-        SignalAttribute {
+        DbcSignalAttribute {
             name: "SPN".to_string(),
             id: 2364539904,
             signal_name: "Engine_Speed".to_string(),
@@ -432,7 +432,7 @@ mod tests {
             "CM_ SG_ 2364539904 Actual_Engine___Percent_Torque_High_Resolution \"A multi- \r \
              \r \
              line description for Engine torque.\";\n",
-            SignalDescription {
+            DbcSignalDescription {
                 id: 2364539904,
                 signal_name: "Actual_Engine___Percent_Torque_High_Resolution".to_string(),
                 description: "A multi- \r \

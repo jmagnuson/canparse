@@ -43,13 +43,13 @@ named!(pub unknown<&str, String>,
     )
 );
 
-named!(pub version<&str, Version>,
+named!(pub version<&str, DbcVersion>,
     do_parse!(
         tag!("VERSION")   >>
         tag!(" ")   >>
         data: quoted_str >>
         line_ending >>
-        ( Version(data) )
+        ( DbcVersion(data) )
     )
 );
 
@@ -70,7 +70,7 @@ fn is_alphanumeric_extended(c: char) -> bool {
 }
 
 // FIXME: `space` isn't really correct since there should only be ONE (probably need alt)
-named!(pub message_definition<&str, MessageDefinition>,
+named!(pub message_definition<&str, DbcMessageDefinition>,
     do_parse!(
         tag!("BO_")   >>
         space >>
@@ -89,7 +89,7 @@ named!(pub message_definition<&str, MessageDefinition>,
         sending_node: take_until_either!(" \t\r\n") >>
         space0 >>
         line_ending >>
-        ( MessageDefinition {
+        ( DbcMessageDefinition {
             id,
             name: name.into(),
             message_len: len,
@@ -98,7 +98,7 @@ named!(pub message_definition<&str, MessageDefinition>,
     )
 );
 
-named!(pub message_description<&str, MessageDescription>,
+named!(pub message_description<&str, DbcMessageDescription>,
     do_parse!(
         tag!("CM_")   >>
         space >>
@@ -111,7 +111,7 @@ named!(pub message_description<&str, MessageDescription>,
         description: quoted_str >>
         tag!(";") >>
         line_ending >>
-        ( MessageDescription {
+        ( DbcMessageDescription {
             id: id,
             signal_name: "".to_string(),
             description: description,
@@ -119,7 +119,7 @@ named!(pub message_description<&str, MessageDescription>,
     )
 );
 
-named!(pub message_attribute<&str, MessageAttribute>,
+named!(pub message_attribute<&str, DbcMessageAttribute>,
     do_parse!(
         tag!("BA_")   >>
         space >>
@@ -134,7 +134,7 @@ named!(pub message_attribute<&str, MessageAttribute>,
         value: digit >>
         tag!(";") >>
         line_ending >>
-        ( MessageAttribute {
+        ( DbcMessageAttribute {
             name: name,
             signal_name: "".to_string(),
             id: id,
@@ -143,7 +143,7 @@ named!(pub message_attribute<&str, MessageAttribute>,
     )
 );
 
-named!(pub signal_definition<&str, SignalDefinition>,
+named!(pub signal_definition<&str, DbcSignalDefinition>,
     do_parse!(
         space >>
         tag!("SG_") >>
@@ -181,7 +181,7 @@ named!(pub signal_definition<&str, SignalDefinition>,
         space >>
         receiving_node: take_until_either!(" \t\r\n") >>
         line_ending >>
-        ( SignalDefinition {
+        ( DbcSignalDefinition {
             name: name.to_string(),
             start_bit: start_bit,
             bit_len: bit_len,
@@ -197,7 +197,7 @@ named!(pub signal_definition<&str, SignalDefinition>,
     )
 );
 
-named!(pub signal_description<&str, SignalDescription>,
+named!(pub signal_description<&str, DbcSignalDescription>,
     do_parse!(
         tag!("CM_")   >>
         space >>
@@ -212,7 +212,7 @@ named!(pub signal_description<&str, SignalDescription>,
         description: quoted_str >>
         tag!(";") >>
         line_ending >>
-        ( SignalDescription {
+        ( DbcSignalDescription {
             id: id,
             signal_name: signal_name.to_string(),
             description: description
@@ -220,7 +220,7 @@ named!(pub signal_description<&str, SignalDescription>,
     )
 );
 
-named!(pub signal_attribute<&str, SignalAttribute>,
+named!(pub signal_attribute<&str, DbcSignalAttribute>,
     do_parse!(
         tag!("BA_")   >>
         space >>
@@ -237,7 +237,7 @@ named!(pub signal_attribute<&str, SignalAttribute>,
         value: digit >>
         tag!(";") >>
         line_ending >>
-        ( SignalAttribute {
+        ( DbcSignalAttribute {
             name: name,
             id: id,
             signal_name: signal_name.to_string(),
