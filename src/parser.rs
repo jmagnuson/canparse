@@ -502,7 +502,8 @@ fn parse_message(
     }
 
     if msg.len() < 8 {
-        for _ in [0..(8-msg.len())] {
+        let padding_width = 8-msg.len();
+        for _ in 0..padding_width {
             msg.push(0x00);
         }
     }
@@ -639,7 +640,7 @@ impl<'a> ParseMessage<&'a CANFrame> for SignalDesignation {
 
         let fun = move |frame: &CANFrame| {
             let msg = &frame.data();
-            parse_message(bit_len, start_bit, little_endian, scale, offset, msg)
+            parse_message(bit_len, start_bit, little_endian, scale, offset, msg.to_vec())
         };
 
         Box::new(fun)
