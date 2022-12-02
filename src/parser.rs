@@ -495,15 +495,22 @@ fn parse_message(
     little_endian: bool,
     scale: f32,
     offset: f32,
-    msg: &[u8],
+    mut msg: Vec<u8>,
 ) -> Option<f32> {
     if msg.len() == 0 {
         return None;
     }
+
+    if msg.len() < 8 {
+        for _ in [0..(8-msg.len())] {
+            msg.push(0x00);
+        }
+    }
+
     let msg64: u64 = if little_endian {
-        LittleEndian::read_u64(msg)
+        LittleEndian::read_u64(&msg)
     } else {
-        BigEndian::read_u64(msg)
+        BigEndian::read_u64(&msg)
     };
 
     let bit_mask: u64 = 2u64.pow(bit_len as u32) - 1;
@@ -583,8 +590,8 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SignalDesignation {
     }
 }
 
-impl<'a> ParseMessage<&'a [u8]> for SignalDesignation {
-    fn parse_message(&self, msg: &[u8]) -> Option<f32> {
+impl<'a> ParseMessage<Vec<u8>> for SignalDesignation {
+    fn parse_message(&self, msg: Vec<u8>) -> Option<f32> {
         parse_message(
             self.bit_len,
             self.start_bit,
@@ -595,7 +602,7 @@ impl<'a> ParseMessage<&'a [u8]> for SignalDesignation {
         )
     }
 
-    fn parser(&self) -> Box<dyn Fn(&[u8]) -> Option<f32>> {
+    fn parser(&self) -> Box<dyn Fn(Vec<u8>) -> Option<f32>> {
         let bit_len = self.bit_len;
         let start_bit = self.start_bit;
         let scale = self.scale;
@@ -603,7 +610,7 @@ impl<'a> ParseMessage<&'a [u8]> for SignalDesignation {
         let little_endian = self.little_endian;
 
         let fun =
-            move |msg: &[u8]| parse_message(bit_len, start_bit, little_endian, scale, offset, msg);
+            move |msg: Vec<u8>| parse_message(bit_len, start_bit, little_endian, scale, offset, msg);
 
         Box::new(fun)
     }
@@ -833,8 +840,8 @@ mod tests {
             _spndef.little_endian = false;
             _spndef
         };
-        static ref MSG: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
-        static ref MSG_BE: [u8; 8] = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11];
+        static ref MSG: Vec<u8> = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88].to_vec();
+        static ref MSG_BE: Vec<u8> = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11].to_vec();
     }
 
     #[test]
@@ -866,25 +873,25 @@ mod tests {
 
     #[test]
     fn test_parse_array() {
-        assert_relative_eq!(SPNDEF.parse_message(&MSG as &[u8; 8]).unwrap(), 2728.5f32);
+        assert_relative_eq!(SPNDEF.parse_message(MSG.clone()).unwrap(), 2728.5f32);
         assert_relative_eq!(
-            SPNDEF_BE.parse_message(&MSG_BE as &[u8; 8]).unwrap(),
+            SPNDEF_BE.parse_message(MSG_BE.clone()).unwrap(),
             2728.5
         );
     }
 
     #[test]
     fn test_parse_message() {
-        assert_relative_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
-        assert_relative_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
-        assert!(SPNDEF.parse_message(&MSG[..0]).is_none());
-        assert!(SPNDEF_BE.parse_message(&MSG_BE[..0]).is_none());
+        assert_relative_eq!(SPNDEF.parse_message(MSG.clone()[..7].to_vec()).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parse_message(MSG_BE.clone()[..7].to_vec()).unwrap(), 2728.5);
+        assert!(SPNDEF.parse_message(MSG.clone()[..0].to_vec()).is_none());
+        assert!(SPNDEF_BE.parse_message(MSG_BE.clone()[..0].to_vec()).is_none());
     }
 
     #[test]
     fn parse_message_closure() {
-        assert_relative_eq!(SPNDEF.parser()(&MSG[..]).unwrap(), 2728.5);
-        assert_relative_eq!(SPNDEF_BE.parser()(&MSG_BE[..]).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF.parser()(MSG.clone()[..].to_vec()).unwrap(), 2728.5);
+        assert_relative_eq!(SPNDEF_BE.parser()(MSG_BE.clone()[..].to_vec()).unwrap(), 2728.5);
     }
 
     #[cfg(feature = "use-socketcan")]
