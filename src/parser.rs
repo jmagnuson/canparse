@@ -497,7 +497,7 @@ fn parse_message(
     offset: f32,
     msg: &[u8],
 ) -> Option<f32> {
-    if msg.len() < 8 {
+    if msg.len() == 0 {
         return None;
     }
     let msg64: u64 = if little_endian {
@@ -877,8 +877,8 @@ mod tests {
     fn test_parse_message() {
         assert_relative_eq!(SPNDEF.parse_message(&MSG[..]).unwrap(), 2728.5);
         assert_relative_eq!(SPNDEF_BE.parse_message(&MSG_BE[..]).unwrap(), 2728.5);
-        assert!(SPNDEF.parse_message(&MSG[..7]).is_none());
-        assert!(SPNDEF_BE.parse_message(&MSG_BE[..7]).is_none());
+        assert!(SPNDEF.parse_message(&MSG[..0]).is_none());
+        assert!(SPNDEF_BE.parse_message(&MSG_BE[..0]).is_none());
     }
 
     #[test]
