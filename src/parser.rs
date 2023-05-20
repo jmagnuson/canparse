@@ -9,14 +9,14 @@ use encoding::{DecoderTrap, Encoding};
 use nom;
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{format, Display, Formatter};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::marker::Sized;
 use std::path::Path;
 use std::str::FromStr;
+use std::{fmt, result};
 
 #[cfg(feature = "use-socketcan")]
 use socketcan::CANFrame;
@@ -45,10 +45,7 @@ pub struct DbcLibrary {
 impl DbcLibrary {
     /// Creates a new `DbcLibrary` instance given an existing lookup table.
     pub fn new(frames: HashMap<u32, FrameDefinition>) -> Self {
-        DbcLibrary {
-            last_id: 0,
-            frames,
-        }
+        DbcLibrary { last_id: 0, frames }
     }
 
     /// Convenience function for loading an entire DBC file into a returned `DbcLibrary`.  This
@@ -200,8 +197,7 @@ impl DbcLibrary {
     pub fn get_signal(&self, name: &str) -> Option<&SignalDefinition> {
         self.frames
             .iter()
-            .filter_map(|pgn| pgn.1.signals.get(name))
-            .next()
+            .find_map(|frame| frame.1.signals.get(name))
     }
 
     pub fn get_frame_ids(&self) -> Vec<u32> {
@@ -346,36 +342,25 @@ impl FromDbc for FrameDefinition {
         Self: Sized,
     {
         match entry {
-            Entry::MessageDefinition(DbcMessageDefinition { id, name, .. }) => {
-                Ok(FrameDefinition::new(
-                    id,
-                    name,
-                    "".to_string(),
-                    0,
-                    HashMap::new(),
-                ))
-            }
+            Entry::MessageDefinition(DbcMessageDefinition { id, name, .. }) => Ok(
+                FrameDefinition::new(id, name, "".to_string(), 0, HashMap::new()),
+            ),
             Entry::MessageDescription(DbcMessageDescription {
                 id, description, ..
-            }) => {
-                Ok(FrameDefinition::new(
-                    id,
-                    "".to_string(),
-                    description,
-                    0,
-                    HashMap::new(),
-                ))
-            }
-            Entry::MessageAttribute(DbcMessageAttribute { id, .. }) => {
-
-                Ok(FrameDefinition::new(
-                    id,
-                    "".to_string(),
-                    "".to_string(),
-                    0,
-                    HashMap::new(),
-                ))
-            }
+            }) => Ok(FrameDefinition::new(
+                id,
+                "".to_string(),
+                description,
+                0,
+                HashMap::new(),
+            )),
+            Entry::MessageAttribute(DbcMessageAttribute { id, .. }) => Ok(FrameDefinition::new(
+                id,
+                "".to_string(),
+                "".to_string(),
+                0,
+                HashMap::new(),
+            )),
             _ => Err(DefinitionErrorKind::UnusedEntry(entry.get_type()).into()),
         }
     }
@@ -495,14 +480,16 @@ fn parse_message(
     little_endian: bool,
     scale: f32,
     offset: f32,
-    mut msg: Vec<u8>,
+    msg: &Vec<u8>,
 ) -> Option<f32> {
+    let mut msg = msg.clone();
+
     if msg.len() == 0 {
         return None;
     }
 
     if msg.len() < 8 {
-        let padding_width = 8-msg.len();
+        let padding_width = 8 - msg.len();
         for _ in 0..padding_width {
             msg.push(0x00);
         }
@@ -519,8 +506,32 @@ fn parse_message(
     Some((((msg64 >> start_bit) & bit_mask) as f32) * scale + offset)
 }
 
+fn encode_signal(
+    bit_len: usize,
+    start_bit: usize,
+    little_endian: bool,
+    scale: f32,
+    offset: f32,
+    signal: f64,
+) -> Result<[u8; 8], String> {
+    let data = (signal - (offset as f64)) / (scale as f64);
+
+    if data.log2() > bit_len as f64 {
+        return Err(format!("Signal does not fit into {}", data));
+    }
+
+    let byte_data = (data as u64) << start_bit;
+
+    let result: [u8; 8] = match little_endian {
+        true => byte_data.to_le_bytes(),
+        false => byte_data.to_be_bytes(),
+    };
+
+    return Ok(result);
+}
+
 /// The collection of functions for parsing CAN messages `N` into their defined signal values.
-pub trait ParseMessage<N> {
+pub trait DecodeMessage<N> {
     /// Parses CAN message type `N` into generic `f32` signal value on success, or `None`
     /// on failure.
     fn parse_message(&self, msg: N) -> Option<f32>;
@@ -528,6 +539,10 @@ pub trait ParseMessage<N> {
     /// Returns a closure which parses CAN message type `N` into generic `f32` signal value on
     /// success, or `None` on failure.
     fn parser(&self) -> Box<dyn Fn(N) -> Option<f32>>;
+}
+
+pub trait EncodeMessage<N> {
+    fn encode_message(&self, signal_map: HashMap<String, f64>) -> Result<N, String>;
 }
 
 impl SignalDefinition {
@@ -548,24 +563,24 @@ impl SignalDefinition {
         units: String,
     ) -> Self {
         SignalDefinition {
-            name: name,
-            number: number,
-            id: id,
-            description: description,
-            start_bit: start_bit,
-            bit_len: bit_len,
-            little_endian: little_endian,
-            signed: signed,
-            scale: scale,
-            offset: offset,
-            min_value: min_value,
-            max_value: max_value,
-            units: units,
+            name,
+            number,
+            id,
+            description,
+            start_bit,
+            bit_len,
+            little_endian,
+            signed,
+            scale,
+            offset,
+            min_value,
+            max_value,
+            units,
         }
     }
 }
 
-impl<'a> ParseMessage<&'a [u8; 8]> for SignalDefinition {
+impl<'a> DecodeMessage<&'a [u8; 8]> for SignalDefinition {
     fn parse_message(&self, msg: &[u8; 8]) -> Option<f32> {
         parse_array(
             self.bit_len,
@@ -591,7 +606,7 @@ impl<'a> ParseMessage<&'a [u8; 8]> for SignalDefinition {
     }
 }
 
-impl<'a> ParseMessage<Vec<u8>> for SignalDefinition {
+impl<'a> DecodeMessage<Vec<u8>> for SignalDefinition {
     fn parse_message(&self, msg: Vec<u8>) -> Option<f32> {
         parse_message(
             self.bit_len,
@@ -599,7 +614,7 @@ impl<'a> ParseMessage<Vec<u8>> for SignalDefinition {
             self.little_endian,
             self.scale,
             self.offset,
-            msg,
+            &msg,
         )
     }
 
@@ -610,17 +625,86 @@ impl<'a> ParseMessage<Vec<u8>> for SignalDefinition {
         let offset = self.offset;
         let little_endian = self.little_endian;
 
-        let fun =
-            move |msg: Vec<u8>| parse_message(bit_len, start_bit, little_endian, scale, offset, msg);
+        let fun = move |msg: Vec<u8>| {
+            parse_message(bit_len, start_bit, little_endian, scale, offset, &msg)
+        };
 
         Box::new(fun)
     }
 }
 
+impl<'a> EncodeMessage<Vec<u8>> for FrameDefinition {
+    fn encode_message(&self, signal_map: HashMap<String, f64>) -> Result<Vec<u8>, String> {
+        let signals = self.get_signals();
+
+        let mut result: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+        for signal in signals {
+            if !signal_map.contains_key(&signal.name) {
+                return Err(format!("Missing signal data: {}", signal.name));
+            }
+
+            let byte_data = encode_signal(
+                signal.bit_len,
+                signal.start_bit,
+                signal.little_endian,
+                signal.scale,
+                signal.offset,
+                signal_map.get(&signal.name).unwrap().clone(),
+            );
+
+            let byte_data = match byte_data {
+                Ok(b) => b,
+                Err(err) => return Err(format!("Error encoding signal: {}", err)),
+            };
+
+            for i in 0..7 {
+                result[i] |= byte_data[i];
+            }
+        }
+
+        return Ok(result.to_vec());
+    }
+}
+
+impl<'a> EncodeMessage<[u8; 8]> for FrameDefinition {
+    fn encode_message(&self, signal_map: HashMap<String, f64>) -> Result<[u8;8], String> {
+        let signals = self.get_signals();
+
+        let mut result: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+        for signal in signals {
+            if !signal_map.contains_key(&signal.name) {
+                return Err(format!("Missing signal data: {}", signal.name));
+            }
+
+            let byte_data = encode_signal(
+                signal.bit_len,
+                signal.start_bit,
+                signal.little_endian,
+                signal.scale,
+                signal.offset,
+                signal_map.get(&signal.name).unwrap().clone(),
+            );
+
+            let byte_data = match byte_data {
+                Ok(b) => b,
+                Err(err) => return Err(format!("Error encoding signal: {}", err)),
+            };
+
+            for i in 0..7 {
+                result[i] |= byte_data[i];
+            }
+        }
+
+        return Ok(result);
+    }
+}
+
 #[cfg(feature = "use-socketcan")]
-impl<'a> ParseMessage<&'a CANFrame> for SignalDefinition {
+impl<'a> DecodeMessage<&'a CANFrame> for SignalDefinition {
     fn parse_message(&self, frame: &CANFrame) -> Option<f32> {
-        let msg = &frame.data();
+        let msg = &frame.data().to_vec();
         parse_message(
             self.bit_len,
             self.start_bit,
@@ -640,7 +724,14 @@ impl<'a> ParseMessage<&'a CANFrame> for SignalDefinition {
 
         let fun = move |frame: &CANFrame| {
             let msg = &frame.data();
-            parse_message(bit_len, start_bit, little_endian, scale, offset, msg.to_vec())
+            parse_message(
+                bit_len,
+                start_bit,
+                little_endian,
+                scale,
+                offset,
+                &msg.to_vec(),
+            )
         };
 
         Box::new(fun)
@@ -818,10 +909,10 @@ mod tests {
     use approx::assert_relative_eq;
 
     lazy_static! {
-        static ref PGNLIB_EMPTY: DbcLibrary = DbcLibrary::default();
-        static ref PGNLIB_ONE: DbcLibrary = DbcLibrary::from_dbc_file("./tests/data/sample.dbc")
+        static ref DBC_EMPTY: DbcLibrary = DbcLibrary::default();
+        static ref DBC_ONE: DbcLibrary = DbcLibrary::from_dbc_file("./tests/data/sample.dbc")
             .expect("Failed to create PgnLibrary from file");
-        static ref SPNDEF: SignalDefinition = SignalDefinition::new(
+        static ref SIGNAL_DEF: SignalDefinition = SignalDefinition::new(
             "Engine_Speed".to_string(),
             190,
             2364539904,
@@ -836,10 +927,34 @@ mod tests {
             8031.88,
             "rpm".to_string()
         );
-        static ref SPNDEF_BE: SignalDefinition = {
-            let mut _spndef = SPNDEF.clone();
+        static ref SIGNAL_DEF_BE: SignalDefinition = {
+            let mut _spndef = SIGNAL_DEF.clone();
             _spndef.little_endian = false;
             _spndef
+        };
+
+        static ref SIGNAL_DEF_ALT: SignalDefinition = {
+            let mut sig_alt_def = SIGNAL_DEF.clone();
+            sig_alt_def.offset = 10.0;
+            sig_alt_def.little_endian = false;
+
+            sig_alt_def.start_bit = 41;
+
+            sig_alt_def
+        };
+        static ref FRAME_DEF: FrameDefinition = {
+            let mut signal_map: HashMap<String, SignalDefinition> = HashMap::new();
+
+            signal_map.insert("Engine_Speed".to_string(), SIGNAL_DEF.clone());
+            signal_map.insert("Engine_Speed2".to_string(), SIGNAL_DEF_ALT.clone());
+
+            FrameDefinition {
+                id: 2364539904,
+                name_abbrev: "test".to_string(),
+                description: "test".to_string(),
+                length: 6,
+                signals: signal_map,
+            }
         };
         static ref MSG: Vec<u8> = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88].to_vec();
         static ref MSG_BE: Vec<u8> = [0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11].to_vec();
@@ -847,19 +962,19 @@ mod tests {
 
     #[test]
     fn default_pgnlibrary() {
-        assert_eq!(PGNLIB_EMPTY.frames.len(), 0);
+        assert_eq!(DBC_EMPTY.frames.len(), 0);
     }
 
     #[test]
     fn get_signal_definition() {
         assert_eq!(
-            *PGNLIB_ONE
+            *DBC_ONE
                 .get_frame(2364539904)
                 .expect("failed to get PgnDefinition from PgnLibrary")
                 .signals
                 .get("Engine_Speed")
                 .expect("failed to get SpnDefinition from PgnDefinition"),
-            *SPNDEF
+            *SIGNAL_DEF
         );
     }
 
@@ -874,25 +989,68 @@ mod tests {
 
     #[test]
     fn test_parse_array() {
-        assert_relative_eq!(SPNDEF.parse_message(MSG.clone()).unwrap(), 2728.5f32);
-        assert_relative_eq!(
-            SPNDEF_BE.parse_message(MSG_BE.clone()).unwrap(),
-            2728.5
-        );
+        assert_relative_eq!(SIGNAL_DEF.parse_message(MSG.clone()).unwrap(), 2728.5f32);
+        assert_relative_eq!(SIGNAL_DEF_BE.parse_message(MSG_BE.clone()).unwrap(), 2728.5);
     }
 
     #[test]
     fn test_parse_message() {
-        assert_relative_eq!(SPNDEF.parse_message(MSG.clone()[..7].to_vec()).unwrap(), 2728.5);
-        assert_relative_eq!(SPNDEF_BE.parse_message(MSG_BE.clone()[..7].to_vec()).unwrap(), 2728.5);
-        assert!(SPNDEF.parse_message(MSG.clone()[..0].to_vec()).is_none());
-        assert!(SPNDEF_BE.parse_message(MSG_BE.clone()[..0].to_vec()).is_none());
+        assert_relative_eq!(
+            SIGNAL_DEF.parse_message(MSG.clone()[..7].to_vec()).unwrap(),
+            2728.5
+        );
+        assert_relative_eq!(
+            SIGNAL_DEF_BE
+                .parse_message(MSG_BE.clone()[..7].to_vec())
+                .unwrap(),
+            2728.5
+        );
+        assert!(SIGNAL_DEF
+            .parse_message(MSG.clone()[..0].to_vec())
+            .is_none());
+        assert!(SIGNAL_DEF_BE
+            .parse_message(MSG_BE.clone()[..0].to_vec())
+            .is_none());
+    }
+
+    #[test]
+    fn test_encode_message() {
+        let mut signal_map: HashMap<String, f64> = HashMap::new();
+        signal_map.insert("Engine_Speed".to_string(), 2728.5);
+        signal_map.insert("Engine_Speed2".to_string(), 2728.5);
+
+        let ret = FRAME_DEF.encode_message(signal_map).clone();
+
+        assert!(ret.is_ok());
+
+        let ret: Vec<u8> = ret.unwrap();
+
+        assert!(ret[3] == 0x44 && ret[4] == 0x55);
+
+        let sig = SIGNAL_DEF.parse_message(ret.clone());
+
+        assert!(sig.is_some());
+
+        assert_eq!(sig.unwrap(), 2728.5);
+
+        let sig = SIGNAL_DEF_ALT.parse_message(ret.clone());
+
+        assert!(sig.is_some());
+
+        assert_eq!(sig.unwrap(), 2728.5);
+
     }
 
     #[test]
     fn parse_message_closure() {
-        assert_relative_eq!(SPNDEF.parser()(MSG.clone()[..].to_vec()).unwrap(), 2728.5);
-        assert_relative_eq!(SPNDEF_BE.parser()(MSG_BE.clone()[..].to_vec()).unwrap(), 2728.5);
+        assert_relative_eq!(
+            SIGNAL_DEF.parser()(MSG.clone()[..].to_vec()).unwrap(),
+            2728.5
+        );
+        assert_relative_eq!(
+            SIGNAL_DEF_BE.parser()(MSG_BE.clone()[..].to_vec()).unwrap(),
+            2728.5
+        );
     }
 
     #[cfg(feature = "use-socketcan")]
@@ -910,15 +1068,18 @@ mod tests {
 
         #[test]
         fn parse_canframe_closure() {
-            assert_relative_eq!(SPNDEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
-            assert_relative_eq!(SPNDEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SIGNAL_DEF.parser()(&FRAME as &CANFrame).unwrap(), 2728.5);
+            assert_relative_eq!(SIGNAL_DEF_BE.parser()(&FRAME_BE as &CANFrame).unwrap(), 2728.5);
         }
 
         #[test]
         fn test_parse_canframe() {
-            assert_relative_eq!(SPNDEF.parse_message(&FRAME as &CANFrame).unwrap(), 2728.5);
             assert_relative_eq!(
-                SPNDEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
+                SIGNAL_DEF.parse_message(&FRAME as &CANFrame).unwrap(),
+                2728.5
+            );
+            assert_relative_eq!(
+                SIGNAL_DEF_BE.parse_message(&FRAME_BE as &CANFrame).unwrap(),
                 2728.5
             );
         }
